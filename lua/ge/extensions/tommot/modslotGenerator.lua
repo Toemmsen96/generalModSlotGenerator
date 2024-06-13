@@ -36,13 +36,6 @@ local function getAllVehicles()
     if v ~= '/vehicles/common' then
       table.insert(vehicles, string.match(v, '/vehicles/(.*)'))
     end
-	if v == '/vehicles/common' then
-		--TODO: add common vehicles
-		--for _, v2 in ipairs(FS:findFiles('/vehicles/common', '*', 0, false, true)) do
-		--	table.insert(vehicles, string.match(v2, '/vehicles/common/(.*)'))
-		--	log('D', 'getAllVehicles', "found common vehicle: " .. string.match(v2, '/vehicles/common/(.*)'))
-		--end
-	end
   end
   return vehicles
 end
@@ -147,6 +140,15 @@ local function getModSlot(vehicleDir)
 	local mainSlotData = loadMainSlot(vehicleDir)
 	if mainSlotData ~= nil and mainSlotData.slots ~= nil and type(mainSlotData.slots) == 'table' then
 		for _,slotType in pairs(getSlotTypes(mainSlotData.slots)) do
+			if ends_with(slotType, "_mod") then
+				return slotType
+			end
+		end
+	end
+
+	--if that didn't work, try slots2, thx dseries
+	if mainSlotData ~= nil and mainSlotData.slots2 ~= nil and type(mainSlotData.slots2) == 'table' then
+		for _,slotType in pairs(getSlotTypes(mainSlotData.slots2)) do
 			if ends_with(slotType, "_mod") then
 				return slotType
 			end
