@@ -1,0 +1,12 @@
+{
+	"information": {
+		"author": "TommoT",
+		"name": "MultiSlot Base"
+	},
+	"version": 1.0,
+	"slotType": "[MODSLOT]",
+    "slots": [
+        ["type", "default", "description"],
+        ["[TYPE]", "[DEFAULT]", "[DESCRIPTION]"]
+    ]
+}

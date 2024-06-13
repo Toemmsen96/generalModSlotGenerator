@@ -3,6 +3,8 @@ local M = {}
 --template
 local template = nil
 local templateVersion = -1
+local templateNames = nil
+local SEPARATE_MODS = false
 
 --helpers
 local function ends_with(str, ending)
@@ -49,8 +51,8 @@ local function loadExistingModSlotData(vehicleDir, templateName)
 	return readJsonFile(getModSlotJbeamPath(vehicleDir, templateName))
 end
 
-local function makeAndSaveNewTemplate(vehicleDir, slotName, templateName)
-	local templateCopy = deepcopy(template)
+local function makeAndSaveNewTemplate(vehicleDir, slotName, helperTemplate, templateName)
+	local templateCopy = deepcopy(helperTemplate)
 	
 	--make main part
 	local mainPart = {}
@@ -146,7 +148,7 @@ local function getModSlot(vehicleDir)
 		end
 	end
 
-	--if that didn't work, try slots2, thx dseries
+	--if that didn't work, try for slots2, which is used in some vehicles, and a newer format
 	if mainSlotData ~= nil and mainSlotData.slots2 ~= nil and type(mainSlotData.slots2) == 'table' then
 		for _,slotType in pairs(getSlotTypes(mainSlotData.slots2)) do
 			if ends_with(slotType, "_mod") then
@@ -156,6 +158,39 @@ local function getModSlot(vehicleDir)
 	end
 	return nil
 end
+
+
+
+--generation stuff for multi templates
+local function generateMulti(vehicleDir)
+	local multiModTemplate = readJsonFile("/lua/ge/extensions/tommot/mSGTemplate.json")
+	if multiModTemplate == nil then
+		log('E', 'generateMulti', "Failed to load multiModTemplate")
+		return
+	end
+	local vehicleModSlot = getModSlot(vehicleDir)
+	if vehicleModSlot == nil then
+		log('D', 'generateMulti', vehicleDir .. " has no mod slot")
+		return
+	end
+	multiModTemplate.slotType = vehicleModSlot
+	for _,templateName in pairs(templateNames) do
+		if multiModTemplate ~= nil and multiModTemplate.slots ~= nil and type(multiModTemplate.slots) == 'table' then
+			for _,slotType in pairs(getSlotTypes(multiModTemplate.slots)) do
+				table.insert(multiModTemplate.slots, {templateName .. "_mod", "", templateName .. "_mod"})
+			end
+		end
+	end
+	local savePath = "/mods/unpacked/generatedModSlot/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_multiMod.jbeam"
+	makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multiMod")
+end
+
+local function saveMultiTemplate(template, templateName)
+	local newTemplate = deepcopy(template)
+	makeAndSaveNewTemplate("common", templateName .. "_mod", newTemplate, templateName)
+end
+
+
 
 --generation stuff
 local function generate(vehicleDir, templateName)
@@ -177,7 +212,7 @@ local function generate(vehicleDir, templateName)
 	else
 		log('D', 'generate', vehicleDir .. " NOT up to date, updating")
 	end
-	makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, templateName)
+	makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, template, templateName)
 end
 
 local function generateAll(templateName)
@@ -205,7 +240,7 @@ end
 
 local function loadTemplateNames()
 	templateNames = {}
-	files = FS:findFiles("/lua/ge/extensions/tommot/ModSlotGeneratorTemplates", "*.json", -1, true, false)
+	local files = FS:findFiles("/lua/ge/extensions/tommot/ModSlotGeneratorTemplates", "*.json", -1, true, false)
 	for _, file in ipairs(files) do
 		local name = string.match(file, "/lua/ge/extensions/tommot/ModSlotGeneratorTemplates/(.*)%.json")
 		log('D', 'loadTemplateNames', "found template: " .. name)
@@ -222,10 +257,23 @@ local function onExtensionLoaded()
 		return
 	end
 	log('D', 'onExtensionLoaded', "Templates found: " .. table.concat(templateNames, ", "))
-	for _,name in pairs(templateNames) do
-		loadTemplate(name)
-		if template ~= nil then
-			generateAll(name)
+
+	if SEPARATE_MODS then
+		for _,name in pairs(templateNames) do
+			loadTemplate(name)
+			if template ~= nil then
+				generateAll(name)
+			end
+		end
+	else
+		for _,name in pairs(templateNames) do
+			loadTemplate(name)
+			if template ~= nil then
+				saveMultiTemplate(template, name)
+			end
+		end
+		for _,veh in pairs(getAllVehicles()) do
+			generateMulti(veh)
 		end
 	end
 end
