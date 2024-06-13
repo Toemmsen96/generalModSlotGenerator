@@ -36,6 +36,13 @@ local function getAllVehicles()
     if v ~= '/vehicles/common' then
       table.insert(vehicles, string.match(v, '/vehicles/(.*)'))
     end
+	if v == '/vehicles/common' then
+		--TODO: add common vehicles
+		--for _, v2 in ipairs(FS:findFiles('/vehicles/common', '*', 0, false, true)) do
+		--	table.insert(vehicles, string.match(v2, '/vehicles/common/(.*)'))
+		--	log('D', 'getAllVehicles', "found common vehicle: " .. string.match(v2, '/vehicles/common/(.*)'))
+		--end
+	end
   end
   return vehicles
 end
@@ -72,7 +79,7 @@ local function findTemplateVersion(modslotJbeam)
 		-- log('D', 'GELua.modslotGenerator.onExtensionLoaded', "modKey: " .. modKey)
 		-- is it valid?
 		if mod.version ~= nil then
-			log('D', 'GELua.modslotGenerator.onExtensionLoaded', "mod.version found: " .. mod.version)
+			log('D', 'findTemplateVersion', "mod.version found: " .. mod.version)
 			return mod.version
 		end
 	end
@@ -120,7 +127,7 @@ local function loadMainSlot(vehicleDir)
 			return mainPartKey
 		end
 	end
-	
+	log('E', 'loadMainSlot', "No main slot found for " .. vehicleDir)
 	--if all else fails, return nil
 	return nil
 end
@@ -136,54 +143,61 @@ local function getSlotTypes(slotTable)
 	return slotTypes
 end
 
---generation stuff
-local function generate(vehicleDir, templateName)
-	local existingData = loadExistingModSlotData(vehicleDir,templateName)
-	existingVersion = findTemplateVersion(existingData)
-	if existingData == nil then
-		log('D', 'GELua.modslotGenerator.onExtensionLoaded', "No existingData for " .. vehicleDir)
-	else
-		log('D', 'GELua.modslotGenerator.onExtensionLoaded', "Loaded existingData: " .. existingVersion .. " for " .. vehicleDir)
-	end
-	if existingData ~= nil and existingVersion == templateVersion then
-		log('D', 'GELua.modslotGenerator.onExtensionLoaded', vehicleDir .. " up to date")
-		return
-	else
-		log('D', 'GELua.modslotGenerator.onExtensionLoaded', vehicleDir .. " NOT up to date, updating")
-	end
-	
+local function getModSlot(vehicleDir)
 	local mainSlotData = loadMainSlot(vehicleDir)
 	if mainSlotData ~= nil and mainSlotData.slots ~= nil and type(mainSlotData.slots) == 'table' then
 		for _,slotType in pairs(getSlotTypes(mainSlotData.slots)) do
 			if ends_with(slotType, "_mod") then
-				log('D', 'GELua.modslotGenerator.onExtensionLoaded', "found mod slot: " .. slotType)
-				makeAndSaveNewTemplate(vehicleDir, slotType, templateName)
+				return slotType
 			end
 		end
 	end
-	
+	return nil
+end
+
+--generation stuff
+local function generate(vehicleDir, templateName)
+	local existingData = loadExistingModSlotData(vehicleDir,templateName)
+	local existingVersion = findTemplateVersion(existingData)
+	local vehicleModSlot = getModSlot(vehicleDir)
+	if vehicleModSlot == nil then
+		log('D', 'generate', vehicleDir .. " has no mod slot")
+		return
+	end
+	if existingData == nil then
+		log('D', 'generate', "No existingData for " .. vehicleDir)
+	else
+		log('D', 'generate', "Loaded existing Version: " .. existingVersion .. " for " .. vehicleDir)
+	end
+	if existingData ~= nil and existingVersion == templateVersion then
+		log('D', 'generate', vehicleDir .. " up to date")
+		return
+	else
+		log('D', 'generate', vehicleDir .. " NOT up to date, updating")
+	end
+	makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, templateName)
 end
 
 local function generateAll(templateName)
-	log('D', 'GELua.modslotGenerator.onExtensionLoaded', "running generateAll()")
+	log('D', 'generateAll', "running generateAll()")
 	for _,veh in pairs(getAllVehicles()) do
 		generate(veh, templateName)
 	end
-	log('D', 'GELua.modslotGenerator.onExtensionLoaded', "done")
+	log('D', 'generateAll', "done")
 end
 
 local function loadTemplate(templateName)
 	if templateName == nil then
-		log('E', 'GELua.modslotGenerator.onExtensionLoaded', "templateName is nil")
+		log('E', 'loadTemplate', "templateName is nil")
 		return
 	end
 	template = readJsonFile("/lua/ge/extensions/tommot/ModSlotGeneratorTemplates/" .. templateName .. ".json")
 	if template ~= nil then
 		templateVersion = template.version
-		log('D', 'GELua.modslotGenerator.onExtensionLoaded', "Loaded Template-version: " .. templateVersion)
+		log('D', 'loadTemplate', "Loaded Template-version: " .. templateVersion)
 	end
 	if template == nil then
-		log('E', 'GELua.modslotGenerator.onExtensionLoaded', "Failed to load template: " .. templateName)
+		log('E', 'loadTemplate', "Failed to load template: " .. templateName)
 	end
 end
 
@@ -192,20 +206,20 @@ local function loadTemplateNames()
 	files = FS:findFiles("/lua/ge/extensions/tommot/ModSlotGeneratorTemplates", "*.json", -1, true, false)
 	for _, file in ipairs(files) do
 		local name = string.match(file, "/lua/ge/extensions/tommot/ModSlotGeneratorTemplates/(.*)%.json")
-		log('D', 'GELua.modslotGenerator.onExtensionLoaded', "found template: " .. name)
+		log('D', 'loadTemplateNames', "found template: " .. name)
 		table.insert(templateNames, name)
 	end
 	return templateNames
 end
 
 local function onExtensionLoaded()
-	log('D', 'GELua.modslotGenerator.onExtensionLoaded', "Mods/TommoT ModSlot Generator Loaded")
+	log('D', 'onExtensionLoaded', "Mods/TommoT ModSlot Generator Loaded")
 	templateNames = loadTemplateNames()
 	if templateNames == nil then
-		log('E', 'GELua.modslotGenerator.onExtensionLoaded', "No templates found")
+		log('E', 'onExtensionLoaded', "No templates found")
 		return
 	end
-	log('D', 'GELua.modslotGenerator.onExtensionLoaded', "Templates found: " .. table.concat(templateNames, ", "))
+	log('D', 'onExtensionLoaded', "Templates found: " .. table.concat(templateNames, ", "))
 	for _,name in pairs(templateNames) do
 		loadTemplate(name)
 		if template ~= nil then
@@ -215,7 +229,7 @@ local function onExtensionLoaded()
 end
 
 
--- 
+-- probably make this into a function to be called if wanted, so its not always removing all files on gameexit
 local function deleteTempFiles()
 	--delete all files in /mods/unpacked/generatedModSlot
 	local files = FS:findFiles("/mods/unpacked/generatedModSlot", "*", -1, true, false)
