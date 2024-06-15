@@ -177,7 +177,7 @@ local function generateMulti(vehicleDir)
 	for _,templateName in pairs(templateNames) do
 		if multiModTemplate ~= nil and multiModTemplate.slots ~= nil and type(multiModTemplate.slots) == 'table' then
 			for _,slotType in pairs(getSlotTypes(multiModTemplate.slots)) do
-				table.insert(multiModTemplate.slots, {templateName .. "_mod", "", templateName .. "_mod"})
+				table.insert(multiModTemplate.slots, {templateName .. "_mod", "", templateName .. " Mod"})
 			end
 		end
 	end
