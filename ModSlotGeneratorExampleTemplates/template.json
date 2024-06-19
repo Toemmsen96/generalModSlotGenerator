@@ -1,0 +1,16 @@
+{
+	"information": {
+		"author": "TommoT",
+		"name": "Example Template"
+	},
+	"version": 1.0,
+	"slotType": "[MODSLOT]",
+	
+	"variables": [
+        ["name", "type", "unit", "category", "default", "min", "max", "title", "description"],
+		["$particulatesCoeff", "range", "%", "Example", 6, 1, 100, "particulates Coeff", "How many particulates show", {"stepDis":0.01}]
+	],
+	"mainEngine":{
+        "particulates":"$=($particulatesCoeff/100)"
+	}
+}

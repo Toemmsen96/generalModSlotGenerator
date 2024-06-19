@@ -228,7 +228,7 @@ local function loadTemplate(templateName)
 		log('E', 'loadTemplate', "templateName is nil")
 		return
 	end
-	template = readJsonFile("/lua/ge/extensions/tommot/ModSlotGeneratorTemplates/" .. templateName .. ".json")
+	template = readJsonFile("/modslotgenerator/" .. templateName .. ".json")
 	if template ~= nil then
 		templateVersion = template.version
 		log('D', 'loadTemplate', "Loaded Template-version: " .. templateVersion)
@@ -240,9 +240,9 @@ end
 
 local function loadTemplateNames()
 	templateNames = {}
-	local files = FS:findFiles("/lua/ge/extensions/tommot/ModSlotGeneratorTemplates", "*.json", -1, true, false)
+	local files = FS:findFiles("/modslotgenerator", "*.json", -1, true, false)
 	for _, file in ipairs(files) do
-		local name = string.match(file, "/lua/ge/extensions/tommot/ModSlotGeneratorTemplates/(.*)%.json")
+		local name = string.match(file, "/modslotgenerator/(.*)%.json")
 		log('D', 'loadTemplateNames', "found template: " .. name)
 		table.insert(templateNames, name)
 	end
@@ -285,11 +285,6 @@ local function deleteTempFiles()
 	local files = FS:findFiles("/mods/unpacked/generatedModSlot", "*", -1, true, false)
 	for _, file in ipairs(files) do
 		FS:removeFile(file)
-	end
-	--TODO: dirs still there, needs to be fixed
-	local dirs = FS:findFiles("/mods/unpacked/generatedModSlot", "*", -1, false, true)
-	for _, dir in ipairs(dirs) do
-		FS:removeDir(dir)
 	end
 end
 
