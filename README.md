@@ -5,3 +5,5 @@ Adds MuliSlot compatibility, so you can use multiple "Additional Modification" -
 ## App (currently still in development)
 A simple UI addable app to generate all the mods manually or generate a specific one by entering your templates location.  
 Can also generate everything as a separate, non Mulislot mod.  
+## TODO
+Automatically create a Body with a Mod slot for non modslot vehicles.
