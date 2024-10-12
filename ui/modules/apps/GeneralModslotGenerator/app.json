@@ -1,0 +1,20 @@
+{
+  "domElement": "<general-modslot-generator></general-modslot-generator>",
+  "name": "General Modslot Generator",
+  "types": [
+    "ui.apps.categories.utility"
+  ],
+  "description": "Generate Additional Modification Jbeam for every available vehicle ingame.",
+  "css": {
+    "left": "20px",
+    "height": "410px",
+    "width": "260px",
+    "min-width": "230px",
+    "min-height": "40px",
+    "top": "100px"
+  },
+  "author": "TommoT",
+  "version": "0.1",
+  "preserveAspectRatio": false,
+  "directive": "generalModslotGenerator"
+}
