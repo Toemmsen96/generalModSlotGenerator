@@ -65,6 +65,23 @@ local function makeAndSaveNewTemplate(vehicleDir, slotName, helperTemplate, temp
 	writeJsonFile(savePath, mainPart, true)
 end
 
+local function makeAndSaveCustomTemplate(vehicleDir, slotName, helperTemplate, templateName, outputPath)
+	if outputPath == nil then
+		log('E', 'makeAndSaveCustomTemplate', "outputPath is nil")
+		return
+	end
+	log('D', 'makeAndSaveCustomTemplate', "Making and saving custom template: " .. vehicleDir .. " " .. slotName .. " " .. templateName .. " " .. outputPath)
+	local templateCopy = deepcopy(helperTemplate)
+	
+	--make main part
+	local mainPart = {}
+	templateCopy.slotType = slotName
+	mainPart[vehicleDir .. "_" .. templateName] = templateCopy
+	
+	--save it
+	local savePath = "mods/" .. outputPath .. "/vehicles/".. vehicleDir.."/" ..vehicleDir.. "_" .. templateName .. ".jbeam"
+	writeJsonFile(savePath, mainPart, true)
+end
 
 --template version finder
 local function findTemplateVersion(modslotJbeam)
@@ -215,12 +232,43 @@ local function generate(vehicleDir, templateName)
 	makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, template, templateName)
 end
 
+local function generateSpecific(vehicleDir, templateName, outputPath)
+	local existingData = loadExistingModSlotData(vehicleDir,templateName)
+	local existingVersion = findTemplateVersion(existingData)
+	local vehicleModSlot = getModSlot(vehicleDir)
+	if vehicleModSlot == nil then
+		log('D', 'generateSpecific', vehicleDir .. " has no mod slot")
+		return
+	end
+	if existingData == nil then
+		log('D', 'generateSpecific', "No existingData for " .. vehicleDir)
+	else
+		log('D', 'generateSpecific', "Loaded existing Version: " .. existingVersion .. " for " .. vehicleDir)
+	end
+	if existingData ~= nil and existingVersion == templateVersion then
+		log('D', 'generateSpecific', vehicleDir .. " up to date")
+		return
+	else
+		log('D', 'generateSpecific', vehicleDir .. " NOT up to date, updating")
+	end
+	makeAndSaveCustomTemplate(vehicleDir, vehicleModSlot, template, templateName, outputPath)
+end
+
+
 local function generateAll(templateName)
 	log('D', 'generateAll', "running generateAll()")
 	for _,veh in pairs(getAllVehicles()) do
 		generate(veh, templateName)
 	end
 	log('D', 'generateAll', "done")
+end
+
+local function generateAllSpecific(templateName, outputPath)
+	log('D', 'generateAllSpecific', "running generateAllSpecific()")
+	for _,veh in pairs(getAllVehicles()) do
+		generateSpecific(veh, templateName, outputPath)
+	end
+	log('D', 'generateAllSpecific', "done")
 end
 
 local function loadTemplate(templateName)
@@ -249,32 +297,75 @@ local function loadTemplateNames()
 	return templateNames
 end
 
+local function generateSeparateMods()
+	for _,name in pairs(templateNames) do
+		loadTemplate(name)
+		if template ~= nil then
+			generateAll(name)
+		end
+	end
+end
+
+local function generateMultiSlotMod()
+	for _,name in pairs(templateNames) do
+		loadTemplate(name)
+		if template ~= nil then
+			saveMultiTemplate(template, name)
+		end
+	end
+	for _,veh in pairs(getAllVehicles()) do
+		generateMulti(veh)
+	end
+end
+
+local function generateSpecificMod(templatePath, templateName, outputPath)
+	if templatePath == nil then
+		log('E', 'generateSpecificMod', "templatePath is empty")
+		return
+	end
+	if templateName == nil then
+		log('E', 'generateSpecificMod', "templateName is empty")
+		return
+	end
+	if outputPath == nil then
+		log('E', 'generateSpecificMod', "outputPath is empty")
+		return
+	end
+	template = readJsonFile(templatePath)
+	if template ~= nil then
+		templateVersion = template.version
+		log('D', 'generateSpecificMod', "Loaded Template-version: " .. templateVersion)
+	end
+	if template == nil then
+		log('E', 'generateSpecificMod', "Failed to load template: " .. templatePath)
+		return
+	end
+	log('D', 'generateSpecificMod', "Generating specific mod: " .. templatePath)
+	if template ~= nil then
+		generateAllSpecific(templateName, outputPath)
+	end
+end
+
+local function getTemplateNames()
+	templateNames = loadTemplateNames()
+	if templateNames == nil then
+		log('E', 'getTemplateNames', "No templates found")
+		return
+	end
+	log('D', 'getTemplateNames', "Templates found: " .. table.concat(templateNames, ", "))
+end
+
 local function onExtensionLoaded()
 	log('D', 'onExtensionLoaded', "Mods/TommoT ModSlot Generator Loaded")
-	templateNames = loadTemplateNames()
+	getTemplateNames()
 	if templateNames == nil then
 		log('E', 'onExtensionLoaded', "No templates found")
 		return
 	end
-	log('D', 'onExtensionLoaded', "Templates found: " .. table.concat(templateNames, ", "))
-
 	if SEPARATE_MODS then
-		for _,name in pairs(templateNames) do
-			loadTemplate(name)
-			if template ~= nil then
-				generateAll(name)
-			end
-		end
+		generateSeparateMods()
 	else
-		for _,name in pairs(templateNames) do
-			loadTemplate(name)
-			if template ~= nil then
-				saveMultiTemplate(template, name)
-			end
-		end
-		for _,veh in pairs(getAllVehicles()) do
-			generateMulti(veh)
-		end
+		generateMultiSlotMod()
 	end
 end
 
@@ -282,16 +373,22 @@ end
 -- probably make this into a function to be called if wanted, so its not always removing all files on gameexit
 local function deleteTempFiles()
 	--delete all files in /mods/unpacked/generatedModSlot
+	log('W', 'deleteTempFiles', "Deleting all files in /mods/unpacked/generatedModSlot")
 	local files = FS:findFiles("/mods/unpacked/generatedModSlot", "*", -1, true, false)
 	for _, file in ipairs(files) do
 		FS:removeFile(file)
 	end
+	log('W', 'deleteTempFiles', "Done")
 end
 
 -- functions which should actually be exported
 M.onExtensionLoaded = onExtensionLoaded
-M.onModDeactivated = onExtensionLoaded
+M.onModDeactivated = deleteTempFiles
 M.onModActivated = onExtensionLoaded
 M.onExit = deleteTempFiles
+M.deleteTempFiles = deleteTempFiles
+M.generateSeparateMods = generateSeparateMods
+M.getTemplateNames = getTemplateNames
+M.generateSpecificMod = generateSpecificMod
 
 return M
