@@ -5,11 +5,13 @@
 
 local M = {}
 
---template
+--template variables
 local template = nil
 local templateVersion = -1
 local templateNames = nil
-local SEPARATE_MODS = false
+-- constants
+local SEPARATE_MODS = false -- defines if templates also generate separate mods for each vehicle
+local DET_DEBUG = false -- defines if debug messages are printed
 
 --helpers
 local queueHookJS
@@ -131,6 +133,48 @@ local function findTemplateVersion(modslotJbeam)
     return nil
 end
 
+local function loadTemplate(templateName)
+    if templateName == nil then
+        log('E', 'loadTemplate', "templateName is nil")
+        GMSGMessage("Error: templateName is nil", "Error", "error", 5000)
+        return
+    end
+    template = readJsonFile("/modslotgenerator/" .. templateName .. ".json")
+    if template ~= nil then
+        templateVersion = template.version
+        log('D', 'loadTemplate', "Loaded Template: " ..templateName.. " Version: " .. templateVersion)
+    end
+    if template == nil then
+        log('E', 'loadTemplate', "Failed to load template: " .. templateName)
+        GMSGMessage("Failed to load template: " .. templateName, "Error", "error", 5000)
+    end
+end
+
+local function loadTemplateNames()
+    templateNames = {}
+    local files = FS:findFiles("/modslotgenerator", "*.json", -1, true, false)
+    for _, file in ipairs(files) do
+        local name = string.match(file, "/modslotgenerator/(.*)%.json")
+        if DET_DEBUG then log('D', 'loadTemplateNames', "found template: " .. name) end
+        table.insert(templateNames, name)
+    end
+    if #templateNames == 0 then
+        return nil
+    end
+    return templateNames
+end
+
+local function getTemplateNames()
+    templateNames = loadTemplateNames()
+    if templateNames == nil then
+        GMSGMessage("No templates found! \n Please make sure you have downloaded at least one MultiSlot / GMSG Plugin", "Warning", "warning", 5000)
+        log('E', 'getTemplateNames', "No templates found")
+        return false
+    end
+    log('D', 'getTemplateNames', "Templates found: " .. table.concat(templateNames, ", "))
+    return true
+end
+
 --part helpers
 local function findMainPart(vehicleJbeam) 
     if type(vehicleJbeam) ~= 'table' then return nil end
@@ -172,7 +216,7 @@ local function loadMainSlot(vehicleDir)
             return mainPartKey
         end
     end
-    log('E', 'loadMainSlot', "No main slot found for " .. vehicleDir)
+    if DET_DEBUG then log('W', 'loadMainSlot', "No main slot found for " .. vehicleDir) end
     --if all else fails, return nil
     return nil
 end
@@ -218,7 +262,7 @@ local function generateMulti(vehicleDir)
     end
     local vehicleModSlot = getModSlot(vehicleDir)
     if vehicleModSlot == nil then
-        log('D', 'generateMulti', vehicleDir .. " has no mod slot")
+        if DET_DEBUG then log('D', 'generateMulti', vehicleDir .. " has no mod slot") end
         return
     end
     multiModTemplate.slotType = vehicleModSlot
@@ -247,17 +291,20 @@ local function generate(vehicleDir, templateName)
         log('D', 'generate', vehicleDir .. " has no mod slot")
         return
     end
-    if existingData == nil then
-        log('D', 'generate', "No existingData for " .. vehicleDir)
-    else
-        log('D', 'generate', "Loaded existing Version: " .. existingVersion .. " for " .. vehicleDir)
-    end
-    if existingData ~= nil and existingVersion == templateVersion then
-        log('D', 'generate', vehicleDir .. " up to date")
-        return
-    else
-        log('D', 'generate', vehicleDir .. " NOT up to date, updating")
-    end
+	if DET_DEBUG then
+		if existingData == nil then
+			log('D', 'generate', "No existingData for " .. vehicleDir)
+		else
+			log('D', 'generate', "Loaded existing Version: " .. existingVersion .. " for " .. vehicleDir)
+		end
+		
+		if existingData ~= nil and existingVersion == templateVersion then
+			log('D', 'generate', vehicleDir .. " up to date")
+			return
+		else
+			log('D', 'generate', vehicleDir .. " NOT up to date, updating")
+		end
+	end
     makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, template, templateName)
 end
 
@@ -284,11 +331,14 @@ local function generateSpecific(vehicleDir, templateName, outputPath)
 end
 
 local function generateAll(templateName)
-    log('D', 'generateAll', "running generateAll()")
+    log('D', 'generateAll', "running generateAll() for template: " .. templateName)
     for _,veh in pairs(getAllVehicles()) do
-        generate(veh, templateName)
+		local co = coroutine.create(function()
+			generate(veh, templateName)
+		end)
+		coroutine.resume(co)
+        --generate(veh, templateName)
     end
-	GMSGMessage("Done generating all mods for template: " .. templateName, "Info", "info", 2000)
     log('D', 'generateAll', "done")
 end
 
@@ -297,47 +347,24 @@ local function generateAllSpecific(templateName, outputPath)
     for _,veh in pairs(getAllVehicles()) do
         generateSpecific(veh, templateName, outputPath)
     end
+	GMSGMessage("Done generating all mods for template: " .. templateName.."\n and path: " .. outputPath, "Info", "info", 2000)
     log('D', 'generateAllSpecific', "done")
 end
 
-local function loadTemplate(templateName)
-    if templateName == nil then
-        log('E', 'loadTemplate', "templateName is nil")
-        GMSGMessage("Error: templateName is nil", "Error", "error", 5000)
-        return
-    end
-    template = readJsonFile("/modslotgenerator/" .. templateName .. ".json")
-    if template ~= nil then
-        templateVersion = template.version
-        log('D', 'loadTemplate', "Loaded Template-version: " .. templateVersion)
-    end
-    if template == nil then
-        log('E', 'loadTemplate', "Failed to load template: " .. templateName)
-        GMSGMessage("Failed to load template: " .. templateName, "Error", "error", 5000)
-    end
-end
 
-local function loadTemplateNames()
-    templateNames = {}
-    local files = FS:findFiles("/modslotgenerator", "*.json", -1, true, false)
-    for _, file in ipairs(files) do
-        local name = string.match(file, "/modslotgenerator/(.*)%.json")
-        log('D', 'loadTemplateNames', "found template: " .. name)
-        table.insert(templateNames, name)
-    end
-    if #templateNames == 0 then
-        return nil
-    end
-    return templateNames
-end
 
 local function generateSeparateMods()
+	getTemplateNames()
     for _,name in pairs(templateNames) do
         loadTemplate(name)
         if template ~= nil then
+			local co = coroutine.create(function()
             generateAll(name)
+			end)
+			coroutine.resume(co)
         end
     end
+	GMSGMessage("Done generating all mods", "Info", "info", 2000)
 end
 
 local function generateMultiSlotMod()
@@ -347,8 +374,11 @@ local function generateMultiSlotMod()
             saveMultiTemplate(template, name)
         end
     end
-    for _,veh in pairs(getAllVehicles()) do
-        generateMulti(veh)
+	for _,veh in pairs(getAllVehicles()) do
+		local co = coroutine.create(function()
+			generateMulti(veh)
+		end)
+		coroutine.resume(co)
     end
 end
 
@@ -384,27 +414,24 @@ local function generateSpecificMod(templatePath, templateName, outputPath)
     end
 end
 
-local function getTemplateNames()
-    templateNames = loadTemplateNames()
-    if templateNames == nil then
-        guihooks.trigger('modmanagerError', 'No templates found! \n Please make sure you have downloaded at least one MultiSlot / GMSG Plugin')
-        GMSGMessage("No templates found! \n Please make sure you have downloaded at least one MultiSlot / GMSG Plugin", "Warning", "warning", 5000)
-        log('E', 'getTemplateNames', "No templates found")
-        return false
-    end
-    log('D', 'getTemplateNames', "Templates found: " .. table.concat(templateNames, ", "))
-    return true
-end
+
 
 local function onExtensionLoaded()
     log('D', 'onExtensionLoaded', "Mods/TommoT ModSlot Generator Loaded")
     GMSGMessage("MultiSlot Generator Loaded, starting to generate.", "Info", "info", 3000)
     if getTemplateNames() then
         if SEPARATE_MODS then
-            generateSeparateMods()
+			local co = coroutine.create(function()
+				generateSeparateMods()
+			end)
+			coroutine.resume(co)
         else
+			local co = coroutine.create(function()
             generateMultiSlotMod()
+			end)
+			coroutine.resume(co)
         end
+		GMSGMessage("Done generating all mods", "Info", "info", 4000)
     end
 end
 
