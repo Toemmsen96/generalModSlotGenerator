@@ -274,6 +274,7 @@ end
 local function loadTemplate(templateName)
 	if templateName == nil then
 		log('E', 'loadTemplate', "templateName is nil")
+		guihooks.trigger('modmanagerError', 'Error: templateName is nil')
 		return
 	end
 	template = readJsonFile("/modslotgenerator/" .. templateName .. ".json")
@@ -283,6 +284,8 @@ local function loadTemplate(templateName)
 	end
 	if template == nil then
 		log('E', 'loadTemplate', "Failed to load template: " .. templateName)
+		guihooks.trigger('modmanagerError', 'Failed to load template: ' .. templateName)
+
 	end
 end
 
@@ -293,6 +296,9 @@ local function loadTemplateNames()
 		local name = string.match(file, "/modslotgenerator/(.*)%.json")
 		log('D', 'loadTemplateNames', "found template: " .. name)
 		table.insert(templateNames, name)
+	end
+	if #templateNames == 0 then
+		return nil
 	end
 	return templateNames
 end
@@ -349,6 +355,7 @@ end
 local function getTemplateNames()
 	templateNames = loadTemplateNames()
 	if templateNames == nil then
+		guihooks.trigger('modmanagerError', 'No templates found! \n Please make sure you have downloaded at least one MultiSlot / GMSG Plugin')
 		log('E', 'getTemplateNames', "No templates found")
 		return
 	end
