@@ -354,6 +354,7 @@ end
 
 
 local function generateSeparateMods()
+	GMSGMessage("Generating separate mods", "Info", "info", 2000)
 	getTemplateNames()
     for _,name in pairs(templateNames) do
         loadTemplate(name)
@@ -364,7 +365,7 @@ local function generateSeparateMods()
 			coroutine.resume(co)
         end
     end
-	GMSGMessage("Done generating all mods", "Info", "info", 2000)
+	GMSGMessage("Done generating separate mods", "Info", "info", 2000)
 end
 
 local function generateMultiSlotMod()
