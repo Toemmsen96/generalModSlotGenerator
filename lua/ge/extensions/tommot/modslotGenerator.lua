@@ -126,7 +126,7 @@ local function findTemplateVersion(modslotJbeam)
         -- log('D', 'GELua.modslotGenerator.onExtensionLoaded', "modKey: " .. modKey)
         -- is it valid?
         if mod.version ~= nil then
-            log('D', 'findTemplateVersion', "mod.version found: " .. mod.version)
+            if DET_DEBUG then log('D', 'findTemplateVersion', "mod.version found: " .. mod.version) end
             return mod.version
         end
     end
@@ -172,6 +172,7 @@ local function getTemplateNames()
         return false
     end
     log('D', 'getTemplateNames', "Templates found: " .. table.concat(templateNames, ", "))
+    GMSGMessage("Templates found: " .. table.concat(templateNames, ", "), "Info", "info", 2000)
     return true
 end
 
@@ -288,7 +289,7 @@ local function generate(vehicleDir, templateName)
     local existingVersion = findTemplateVersion(existingData)
     local vehicleModSlot = getModSlot(vehicleDir)
     if vehicleModSlot == nil then
-        log('D', 'generate', vehicleDir .. " has no mod slot")
+        if DET_DEBUG then log('D', 'generate', vehicleDir .. " has no mod slot") end
         return
     end
 	if DET_DEBUG then
