@@ -1,0 +1,64 @@
+{
+    "attachments": [
+        {
+            "data_filename": "1143674.png",
+            "original_filename": "ExampleTemplate.png",
+            "thumb_filename": "thumbs\/1143674.jpg"
+        },
+        {
+            "data_filename": "1143675.png",
+            "original_filename": "MultiMod.png",
+            "thumb_filename": "thumbs\/1143675.jpg"
+        }
+    ],
+    "resource_id": 31265,
+    "current_version_id": 55564,
+    "download_count": 0,
+    "resource_version_id": 55564,
+    "version_string": "1.0",
+    "last_update": 1718827027,
+    "rating_avg": 0,
+    "rating_count": 0,
+    "rating_sum": 0,
+    "resource_category_id": 7,
+    "resource_date": 1718827027,
+    "review_count": 0,
+    "tag_line": "generates mods for every vehicle ingame, even most modded ones!",
+    "update_count": 0,
+    "path": "MFBSYCPZ9\/55564\/",
+    "filename": "TommoT_GMSG.zip",
+    "title": "General Modslot Generator (MultiSlot)",
+    "user_id": 215596,
+    "username": "TommoT",
+    "tagid": "MFBSYCPZ9",
+    "message": "[B]This is to be used as a dependency for mod devs, and one mod to download to use plugins that use this. DON'T INLCUDE THIS IN YOUR MOD - ADD AS DEPENDENCY.\n[\/B]\nLUA mod to make it possible to generate \"Additional Modifications\"-slot mods for every vehicle ingame that supports it, even modded ones, that have the \"vehiclename_mod\" - slot.\nThis makes the modding of all supported beamng vehicles at once less tedious and easier. Required for creating a mod with this:\n[LIST]\n[*]one template.json file, which is the structure for a \"vehiclename\"_mod.jbeam file in the right folder (modslotgenerator\/\"templatename\".json)\n[\/LIST]\n-> this mod will then automatically generate all jbeam files based on all the found templates\n\n[B]This also makes all the Additional Modification-mods selectable at the same time![\/B] Compatibility is not always guaranteed but in my testing i have not yet run into issues.\n\n[B]Installation[\/B]\n[LIST=1]\n[*]Install like any other mod\n[*]Install any plugins made for this.\n[*]Select MultiSlot Base in Additional Modifications Slot\n[*]Select mods you want to use.\n[\/LIST]\n[ATTACH]1143675[\/ATTACH]\n(I will make some plugins myself for some examples)\n\nFor mod devs, anyone that wants to create a simple mod:\n[SPOILER=\"Creating a plugin for this\"]\nFirst: [B][COLOR=#ff4d4d]DO NOT INCLUDE THIS MOD IN YOUR PLUGIN - ADD A LINK TO IT[\/COLOR][\/B]\nThis would only make duplicates of the same thing and be unnecessary. By having this as a dependency, its way easier for me to release an update to the code to improve stuff and you don't need to manually update your mod\/plugin.\n\n[B]Creating a plugin:[\/B]\nThis is pretty much the same as making any Additional-Modification mod.\nWhat is different?\nYou need to make a .json template and place that in \/modslotgenerator\/, like you would place the jbeam in the \/vehicles folder. You will find a template in this mod under ModSlotGeneratorExampleTemplates\/template.json.\nRename your Template to something unique, that wouldn't conflict with another mod (don't leave the default name of the template.json file or call it mod.json, these are bad names). THIS TEMPLATENAME WILL BE HOW IT SHOWS UP!\nThis is what the example template looks like:\n[ATTACH]1143674[\/ATTACH]\nNow develop your mod accordingly in here by adding whatever Additional Modification slot you want, just don't change the slotType\n[B]Testing the plugin[\/B]\nWhen testing, to reload this mod just reload your LUA by pressing ctrl + L and everything will get regenerated\n[B]Releasing the mod:[\/B]\nAdd the link to this mod into your description on the mod page and write that they need to download this for your mod to work. (maybe also add something like [MultiSlot plugin] or whatever)\n\n[B]CAUTION[\/B]: you cant use comments like in jbeam and have to follow json syntax with the commas etc, shouldn't be a huge issue tho.\nFor any questions or issues go here to report:\n[URL]https:\/\/www.beamng.com\/threads\/tool-general-mod-slot-generator-generates-_mod-files-for-every-vehicle-inc-mods-with-template.98927\/[\/URL]\n[\/SPOILER]\n\nCredits:\n[USER=140817]@Dummiesman[\/USER] - some of the jbeam generator Lua code\n[USER=215596]@TommoT[\/USER]  - creating this mod\nDavid Heiko Kolf - making dkjson module for LUA used in this mod (for License see LICENSE.txt or website: [URL]http:\/\/dkolf.de\/src\/dkjson-lua.fsl\/wiki?name=Documentation[\/URL])\n\n[B]Available Plugins:[\/B]\n[SPOILER=\"Plugins\"]\n[LIST]\n[*]Boost By Gear:\n[LIST]\n[*][URL]https:\/\/www.beamng.com\/resources\/multislot-plugin-boost-by-gear-for-every-vehicle.31266\/[\/URL]\n[\/LIST]\n[*]Backfire \/ Afterfire:\n[LIST]\n[*][URL]https:\/\/www.beamng.com\/resources\/backfire-afterfire-mod-now-customizable-and-mod-compatible.6475\/[\/URL]\n[\/LIST]\n[*]Indestructible Engines:\n[LIST]\n[*][URL]https:\/\/www.beamng.com\/resources\/multislot-plugin-indestructible-engines-for-every-vehicle.31267\/[\/URL]\n[\/LIST]\n[\/LIST]\n[\/SPOILER]\n\n[HR][\/HR]\n[SPOILER=\"Known Issues \/ caveats\"]\n[LIST]\n[*]MultiSlot mods may not always be saveable in a config\n[*]Incompatible with non _mod-slot vehicles (might get added in the future, still unsure)\n[*]Is a dependency\n[*]Folders for generated jbeam files don't get automatically deleted, the files do\n[\/LIST]\n[\/SPOILER]",
+    "category_title": "",
+    "prefix_title": "Experimental",
+    "via": "packed by repo on Thu, 20 Jun 2024 01:01:18 GMT",
+    "hashes": [
+        [
+            "scripts\/modslotGenerator\/modScript.lua",
+            "7b1d5688d50a0b3e"
+        ],
+        [
+            "ModSlotGeneratorExampleTemplates\/template.json",
+            "0e5832e53f7f8225"
+        ],
+        [
+            "lua\/common\/extensions\/LICENSE.txt",
+            "9ab548d2fd632a5e"
+        ],
+        [
+            "lua\/common\/extensions\/dkjson.lua",
+            "2268bde54a9c6d89"
+        ],
+        [
+            "lua\/ge\/extensions\/tommot\/modslotGenerator.lua",
+            "4b65fb696c31db6f"
+        ],
+        [
+            "lua\/ge\/extensions\/tommot\/mSGTemplate.json",
+            "ed2fdd2a505f788c"
+        ]
+    ]
+}

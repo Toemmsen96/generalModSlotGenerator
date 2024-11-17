@@ -4,7 +4,7 @@
   "types": [
     "ui.apps.categories.utility"
   ],
-  "description": "Generate Additional Modification Jbeam for every available vehicle ingame.",
+  "description": "Generate Additional Modification Jbeam for every available vehicle ingame. Can be used to make mods to distribute to the community.",
   "css": {
     "left": "20px",
     "height": "410px",
