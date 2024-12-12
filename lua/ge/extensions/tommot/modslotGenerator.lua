@@ -12,6 +12,8 @@ local templateNames = nil
 -- constants
 local SEPARATE_MODS = false -- defines if templates also generate separate mods for each vehicle
 local DET_DEBUG = false -- defines if debug messages are printed
+local USE_COROUTINES = true -- defines if coroutines are used to generate mods
+local AUTO_APPLY_SETTINGS = false -- defines if settings are automatically applied on load
 
 --helpers
 local queueHookJS
@@ -65,6 +67,64 @@ end
 
 local function writeJsonFile(path, data, compact)
     return jsonWriteFile(path, data, compact)
+end
+
+local function sendSettingsToUI()
+    local data = {
+        SeparateMods = SEPARATE_MODS,
+        DetailedDebug = DET_DEBUG,
+        UseCoroutines = USE_COROUTINES,
+        AutoApplySettings = AUTO_APPLY_SETTINGS
+    }
+    guihooks.trigger('setModSettings', data)
+end
+
+local function loadSettings()
+    local settings = readJsonFile("/mods/unpacked/generatedModSlot/GMSG_Settings.json")
+    if settings == nil then
+        log('W', 'loadSettings', "Failed to any saved settings, using defaults")
+        settings = readJsonFile("/lua/ge/extensions/tommot/GMSG_Settings.json")
+    end
+    if settings ~= nil then
+        SEPARATE_MODS = settings.SeparateMods
+        DET_DEBUG = settings.DetailedDebug
+        USE_COROUTINES = settings.UseCoroutines
+        GMSGMessage("Settings loaded: SeparateMods: " .. tostring(SEPARATE_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES), "Info", "info", 2000)
+        sendSettingsToUI()
+    end 
+    if settings == nil then
+        GMSGMessage("Failed to load settings, using defaults: SeparateMods: " .. tostring(SEPARATE_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES), "Warning", "warning", 2000)
+    end
+end
+
+local function saveSettings()
+    local settings = {
+        SeparateMods = SEPARATE_MODS,
+        DetailedDebug = DET_DEBUG,
+        UseCoroutines = USE_COROUTINES,
+        AutoApplySettings = AUTO_APPLY_SETTINGS
+    }
+    writeJsonFile("/mods/unpacked/generatedModSlot/GMSG_Settings.json", settings, true)
+    GMSGMessage("Settings saved: SeparateMods: " .. tostring(SEPARATE_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES), "Info", "info", 2000)
+    sendSettingsToUI()
+end
+
+local function setModSettings(jsonData)
+    local data = json.decode(jsonData)
+    if data.SeparateMods ~= nil then
+        SEPARATE_MODS = data.SeparateMods
+    end
+    if data.DetailedDebug ~= nil then
+        DET_DEBUG = data.DetailedDebug
+    end
+    if data.UseCoroutines ~= nil then
+        USE_COROUTINES = data.UseCoroutines
+    end
+    if data.AutoApplySettings ~= nil then
+        AUTO_APPLY_SETTINGS = data.AutoApplySettings
+    end
+    
+    saveSettings()
 end
 --end helpers
 
@@ -420,6 +480,7 @@ end
 
 local function onExtensionLoaded()
     log('D', 'onExtensionLoaded', "Mods/TommoT ModSlot Generator Loaded")
+    loadSettings()
     GMSGMessage("MultiSlot Generator Loaded, starting to generate.", "Info", "info", 3000)
     if getTemplateNames() then
         if SEPARATE_MODS then
@@ -444,7 +505,10 @@ local function deleteTempFiles()
 	GMSGMessage("Deleting all files in /mods/unpacked/generatedModSlot", "Info", "info", 2000)
     local files = FS:findFiles("/mods/unpacked/generatedModSlot", "*", -1, true, false)
     for _, file in ipairs(files) do
+        if file ~= "/mods/unpacked/generatedModSlot/GMSG_Settings.json" then
+        if DET_DEBUG then log('D', 'deleteTempFiles', "Deleting file: " .. file) end
         FS:removeFile(file)
+        end
     end
     log('W', 'deleteTempFiles', "Done")
 	GMSGMessage("Done", "Info", "info", 2000)
@@ -459,5 +523,12 @@ M.deleteTempFiles = deleteTempFiles
 M.generateSeparateMods = generateSeparateMods
 M.getTemplateNames = getTemplateNames
 M.generateSpecificMod = generateSpecificMod
+M.loadSettings = loadSettings
+M.saveSettings = saveSettings
+M.setSeparateMods = setSeparateMods
+M.setDetailedDebug = setDetailedDebug
+M.setUseCoroutines = setUseCoroutines
+M.setModSettings = setModSettings
+M.sendSettingsToUI = sendSettingsToUI
 
 return M
