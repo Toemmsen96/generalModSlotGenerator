@@ -14,6 +14,10 @@ local SEPARATE_MODS = false -- defines if templates also generate separate mods 
 local DET_DEBUG = false -- defines if debug messages are printed
 local USE_COROUTINES = true -- defines if coroutines are used to generate mods
 local AUTO_APPLY_SETTINGS = false -- defines if settings are automatically applied on load
+local AUTOPACK = false -- defines if the mod should be autopacked
+local GENERATED_PATH = "/mods/unpacked/generatedModSlot"
+local SETTINGS_PATH = "/settings/GMSG_Settings.json"
+-- end constants
 
 --helpers
 local queueHookJS
@@ -52,7 +56,6 @@ local function isEmptyOrWhitespace(str)
     return str == nil or str:match("^%s*$") ~= nil
 end
 
---helpers
 local function ends_with(str, ending)
    return ending == "" or str:sub(-#ending) == ending
 end
@@ -68,7 +71,9 @@ end
 local function writeJsonFile(path, data, compact)
     return jsonWriteFile(path, data, compact)
 end
+-- end helpers
 
+-- Editable settings
 local function sendSettingsToUI()
     local data = {
         SeparateMods = SEPARATE_MODS,
@@ -80,7 +85,7 @@ local function sendSettingsToUI()
 end
 
 local function loadSettings()
-    local settings = readJsonFile("/mods/unpacked/generatedModSlot/GMSG_Settings.json")
+    local settings = readJsonFile(SETTINGS_PATH)
     if settings == nil then
         log('W', 'loadSettings', "Failed to any saved settings, using defaults")
         settings = readJsonFile("/lua/ge/extensions/tommot/GMSG_Settings.json")
@@ -104,7 +109,7 @@ local function saveSettings()
         UseCoroutines = USE_COROUTINES,
         AutoApplySettings = AUTO_APPLY_SETTINGS
     }
-    writeJsonFile("/mods/unpacked/generatedModSlot/GMSG_Settings.json", settings, true)
+    writeJsonFile(SETTINGS_PATH, settings, true)
     GMSGMessage("Settings saved: SeparateMods: " .. tostring(SEPARATE_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES), "Info", "info", 2000)
     sendSettingsToUI()
 end
@@ -126,7 +131,7 @@ local function setModSettings(jsonData)
     
     saveSettings()
 end
---end helpers
+--end Editable Settings
 
 local function getAllVehicles()
   local vehicles = {}
@@ -139,7 +144,7 @@ local function getAllVehicles()
 end
 
 local function getModSlotJbeamPath(vehicleDir, templateName)
-    local path = "/mods/unpacked/generatedModSlot/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_" .. templateName .. ".jbeam"
+    local path = GENERATED_PATH.."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_" .. templateName .. ".jbeam"
     return path
 end
 
@@ -334,7 +339,7 @@ local function generateMulti(vehicleDir)
             end
         end
     end
-    local savePath = "/mods/unpacked/generatedModSlot/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_multiMod.jbeam"
+    local savePath = GENERATED_PATH.."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_multiMod.jbeam"
     makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multiMod")
 end
 
@@ -394,15 +399,21 @@ end
 local function generateAll(templateName)
     log('D', 'generateAll', "running generateAll() for template: " .. templateName)
     for _,veh in pairs(getAllVehicles()) do
-		local co = coroutine.create(function()
-			generate(veh, templateName)
-		end)
-		coroutine.resume(co)
+        generate(veh, templateName)
         --generate(veh, templateName)
     end
     log('D', 'generateAll', "done")
 end
 
+-- For concurrency with the job system
+local function generateAllJob(job)
+    log('D', 'generateAll', "running generateAll() for template: " .. templateName)
+    for _,veh in pairs(getAllVehicles()) do
+        generate(veh, templateName)
+        job.yield()
+    end
+    log('D', 'generateAll', "done")
+end
 local function generateAllSpecific(templateName, outputPath)
     log('D', 'generateAllSpecific', "running generateAllSpecific()")
     for _,veh in pairs(getAllVehicles()) do
@@ -412,7 +423,18 @@ local function generateAllSpecific(templateName, outputPath)
     log('D', 'generateAllSpecific', "done")
 end
 
-
+local function generateSeparateJob(job)
+    GMSGMessage("Generating separate mods", "Info", "info", 2000)
+	getTemplateNames()
+    for _,name in pairs(templateNames) do
+        loadTemplate(name)
+        if template ~= nil then
+            generateAll(name)
+            job.yield()
+        end
+    end
+	GMSGMessage("Done generating separate mods", "Info", "info", 2000)
+end
 
 local function generateSeparateMods()
 	GMSGMessage("Generating separate mods", "Info", "info", 2000)
@@ -420,13 +442,27 @@ local function generateSeparateMods()
     for _,name in pairs(templateNames) do
         loadTemplate(name)
         if template ~= nil then
-			local co = coroutine.create(function()
             generateAll(name)
-			end)
-			coroutine.resume(co)
         end
     end
 	GMSGMessage("Done generating separate mods", "Info", "info", 2000)
+end
+
+local function generateMultiSlotJob(job)
+    GMSGMessage("Generating multi mods", "Info", "info", 2000)
+    getTemplateNames()
+    for _,name in pairs(templateNames) do
+        loadTemplate(name)
+        if template ~= nil then
+            saveMultiTemplate(template, name)
+            job.yield()
+        end
+    end
+    for _,veh in pairs(getAllVehicles()) do
+        generateMulti(veh)
+        job.yield()
+    end
+    GMSGMessage("Done generating all mods", "Info", "info", 2000)
 end
 
 local function generateMultiSlotMod()
@@ -437,10 +473,7 @@ local function generateMultiSlotMod()
         end
     end
 	for _,veh in pairs(getAllVehicles()) do
-		local co = coroutine.create(function()
-			generateMulti(veh)
-		end)
-		coroutine.resume(co)
+		generateMulti(veh)
     end
 end
 
@@ -484,15 +517,9 @@ local function onExtensionLoaded()
     GMSGMessage("MultiSlot Generator Loaded, starting to generate.", "Info", "info", 3000)
     if getTemplateNames() then
         if SEPARATE_MODS then
-			local co = coroutine.create(function()
-				generateSeparateMods()
-			end)
-			coroutine.resume(co)
+            if USE_COROUTINES then core_jobsystem.create(generateSeparateJob, 1/60) else generateSeparateMods() end
         else
-			local co = coroutine.create(function()
-            generateMultiSlotMod()
-			end)
-			coroutine.resume(co)
+            if USE_COROUTINES then core_jobsystem.create(generateMultiSlotJob, 1/60) else generateMultiSlotMod() end
         end
 		GMSGMessage("Done generating all mods", "Info", "info", 4000)
     end
@@ -503,9 +530,8 @@ local function deleteTempFiles()
     --delete all files in /mods/unpacked/generatedModSlot
     log('W', 'deleteTempFiles', "Deleting all files in /mods/unpacked/generatedModSlot")
 	GMSGMessage("Deleting all files in /mods/unpacked/generatedModSlot", "Info", "info", 2000)
-    local files = FS:findFiles("/mods/unpacked/generatedModSlot", "*", -1, true, false)
+    local files = FS:findFiles(GENERATED_PATH, "*", -1, true, false)
     for _, file in ipairs(files) do
-        if file ~= "/mods/unpacked/generatedModSlot/GMSG_Settings.json" then
         if DET_DEBUG then log('D', 'deleteTempFiles', "Deleting file: " .. file) end
         FS:removeFile(file)
         end
