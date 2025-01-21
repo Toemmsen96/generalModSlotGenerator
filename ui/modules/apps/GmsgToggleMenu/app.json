@@ -1,0 +1,20 @@
+{
+  "domElement": "<gmsg-togglemenu></gmsg-togglemenu>",
+  "name": "General Modslot Generator Toggle Menu",
+  "types": [
+    "ui.apps.categories.utility"
+  ],
+  "description": "General Modslot Generator: Only a Button to toggle open and close the Menu.",
+  "css": {
+    "left": "20px",
+    "height": "150px",
+    "width": "159px",
+    "min-width": "40px",
+    "min-height": "40px",
+    "top": "100px"
+  },
+  "author": "TommoT",
+  "version": "0.1",
+  "preserveAspectRatio": false,
+  "directive": "gmsgToggleMenu"
+}

@@ -1,10 +1,11 @@
-{"GMSGSettingsToggle": {
-        "cat":"GMSG",
-        "order": 1,
+{
+"GMSGSettingsToggle": {
+        "cat":"menu",
+        "order": 0,
         "ctx": "tlua",
         "onDown": "if tommot_gmsgUI then tommot_gmsgUI.toggleUI() end",
         "actionMap": "Global",
-        "title": "Settings",
-        "desc": "Shows or hides the settings window."
+        "title": "Toggle GMSG UI",
+        "desc": "Shows or hides the UI window for the General Modslot Generator by TommoT."
     }
 }

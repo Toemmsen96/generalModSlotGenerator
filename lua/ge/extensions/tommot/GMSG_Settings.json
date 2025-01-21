@@ -1,5 +1,6 @@
 {
     "UseCoroutines": true,
     "DetailedDebug": true,
-    "SeparateMods": true
+    "SeparateMods": false,
+    "Autopack": false
 }

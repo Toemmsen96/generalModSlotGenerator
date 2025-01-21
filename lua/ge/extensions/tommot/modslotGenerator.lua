@@ -9,9 +9,10 @@ local M = {}
 local template = nil
 local templateVersion = -1
 local templateNames = nil
--- constants
+-- settings
 local SEPARATE_MODS = false -- defines if templates also generate separate mods for each vehicle
 local DET_DEBUG = false -- defines if debug messages are printed
+local LOGLEVEL = 2 -- 0 = no logs, 1 = info, 2 = debug
 local USE_COROUTINES = true -- defines if coroutines are used to generate mods
 local AUTO_APPLY_SETTINGS = false -- defines if settings are automatically applied on load
 local AUTOPACK = false -- defines if the mod should be autopacked
@@ -25,6 +26,26 @@ if obj then
   queueHookJS = function(...) obj:queueHookJS(...) end
 elseif be then
   queueHookJS = function(...) be:queueHookJS(...) end
+end
+
+local function logToConsole(level, func, message)
+    if LOGLEVEL == 0 then
+        return
+    end
+    if level == 'D' and LOGLEVEL < 2 then
+        return
+    end
+    if level == 'I' and LOGLEVEL < 1 then
+        return
+    end
+    if level == 'W' and LOGLEVEL < 1 then
+        return
+    end
+    if level == 'E' then
+        log('E', func, message)
+        return
+    end
+    log(level, "EngineSwapGenerator", func .. ": " .. message)
 end
 
 local function GMSGMessage(msg, title, type, timeOut)
@@ -79,7 +100,8 @@ local function sendSettingsToUI()
         SeparateMods = SEPARATE_MODS,
         DetailedDebug = DET_DEBUG,
         UseCoroutines = USE_COROUTINES,
-        AutoApplySettings = AUTO_APPLY_SETTINGS
+        AutoApplySettings = AUTO_APPLY_SETTINGS,
+        Autopack = AUTOPACK
     }
     guihooks.trigger('setModSettings', data)
 end
@@ -94,6 +116,8 @@ local function loadSettings()
         SEPARATE_MODS = settings.SeparateMods
         DET_DEBUG = settings.DetailedDebug
         USE_COROUTINES = settings.UseCoroutines
+        AUTO_APPLY_SETTINGS = settings.AutoApplySettings
+        AUTOPACK = settings.Autopack
         GMSGMessage("Settings loaded: SeparateMods: " .. tostring(SEPARATE_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES), "Info", "info", 2000)
         sendSettingsToUI()
     end 
@@ -107,7 +131,8 @@ local function saveSettings()
         SeparateMods = SEPARATE_MODS,
         DetailedDebug = DET_DEBUG,
         UseCoroutines = USE_COROUTINES,
-        AutoApplySettings = AUTO_APPLY_SETTINGS
+        AutoApplySettings = AUTO_APPLY_SETTINGS,
+        Autopack = AUTOPACK
     }
     writeJsonFile(SETTINGS_PATH, settings, true)
     GMSGMessage("Settings saved: SeparateMods: " .. tostring(SEPARATE_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES), "Info", "info", 2000)
@@ -127,6 +152,9 @@ local function setModSettings(jsonData)
     end
     if data.AutoApplySettings ~= nil then
         AUTO_APPLY_SETTINGS = data.AutoApplySettings
+    end
+    if data.Autopack ~= nil then
+        AUTOPACK = data.Autopack
     end
     
     saveSettings()
@@ -479,7 +507,7 @@ local function generateMultiSlotMod()
     end
 end
 
-local function generateSpecificMod(templatePath, templateName, outputPath, autoPack)
+local function generateSpecificMod(templatePath, templateName, outputPath, autoPack, includeMStemplate)
     if isEmptyOrWhitespace(templatePath) then
         log('E', 'generateSpecificMod', "templatePath is empty")
         GMSGMessage("Error: templatePath is empty", "Error", "error", 5000)
@@ -498,6 +526,10 @@ local function generateSpecificMod(templatePath, templateName, outputPath, autoP
     if autoPack == nil then
         autoPack = AUTOPACK
     end
+    if includeMStemplate == nil then
+        includeMStemplate = false
+    end
+
     template = readJsonFile(templatePath)
     if template ~= nil then
         templateVersion = template.version
@@ -537,6 +569,9 @@ local function onExtensionLoaded()
         end
 		GMSGMessage("Done generating all mods", "Info", "info", 4000)
     end
+    if AUTOPACK then
+        core_modmanager.packMod(GENERATED_PATH:lower())
+    end
     extensions.reload("tommot_gmsgUI")
 end
 
@@ -554,22 +589,29 @@ local function deleteTempFiles()
 	GMSGMessage("Done", "Info", "info", 2000)
 end
 
--- functions which should actually be exported
+-- Exported functions for mod lifecycle
 M.onExtensionLoaded = onExtensionLoaded
 M.onModDeactivated = deleteTempFiles
 M.onModActivated = onExtensionLoaded
 M.onExit = deleteTempFiles
-M.deleteTempFiles = deleteTempFiles
+
+-- Exported functions for mod generation
+M.generateMultiSlotMod = generateMultiSlotMod
 M.generateSeparateMods = generateSeparateMods
+M.generateSpecificMod = generateSpecificMod
+
+-- Exported functions for template management
 M.getTemplateNames = getTemplateNames
 M.loadTemplateNames = loadTemplateNames
-M.generateSpecificMod = generateSpecificMod
+
+-- Exported functions for settings management
 M.loadSettings = loadSettings
 M.saveSettings = saveSettings
-M.setSeparateMods = setSeparateMods
-M.setDetailedDebug = setDetailedDebug
-M.setUseCoroutines = setUseCoroutines
 M.setModSettings = setModSettings
 M.sendSettingsToUI = sendSettingsToUI
+
+-- Exported utility functions
+M.deleteTempFiles = deleteTempFiles
+M.logToConsole = logToConsole
 
 return M
