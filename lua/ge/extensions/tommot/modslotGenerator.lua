@@ -208,10 +208,12 @@ local function loadTemplate(templateName)
     if template ~= nil then
         templateVersion = template.version
         log('D', 'loadTemplate', "Loaded Template: " ..templateName.. " Version: " .. templateVersion)
+        return template
     end
     if template == nil then
         log('E', 'loadTemplate', "Failed to load template: " .. templateName)
         GMSGMessage("Failed to load template: " .. templateName, "Error", "error", 5000)
+        return nil
     end
 end
 
@@ -375,7 +377,7 @@ local function generate(vehicleDir, templateName)
 end
 
 local function generateSpecific(vehicleDir, templateName, outputPath)
-    local existingData = loadExistingModSlotData(vehicleDir,templateName)
+    --local existingData = loadExistingModSlotData(vehicleDir,templateName)
     local existingVersion = findTemplateVersion(existingData)
     local vehicleModSlot = getModSlot(vehicleDir)
     if vehicleModSlot == nil then
@@ -499,8 +501,13 @@ local function generateSpecificMod(templatePath, templateName, outputPath)
         log('D', 'generateSpecificMod', "Loaded Template-version: " .. templateVersion)
     end
     if template == nil then
-        log('E', 'generateSpecificMod', "Failed to load template: " .. templatePath)
-        return
+        log('W', 'generateSpecificMod', "Failed to load template from path: " .. templatePath)
+        template = loadTemplate(templateName)
+        if template == nil then
+            log('E', 'generateSpecificMod', "Failed to load template: " .. templateName)
+            GMSGMessage("Failed to load template: " .. templateName, "Error", "error", 5000)
+            return
+        end
     end
     log('D', 'generateSpecificMod', "Generating specific mod: " .. templatePath)
     GMSGMessage("Generating specific mod: " .. templatePath, "Info", "info", 2000)
@@ -523,6 +530,8 @@ local function onExtensionLoaded()
         end
 		GMSGMessage("Done generating all mods", "Info", "info", 4000)
     end
+    extensions.load("tommot_gmsgUI")
+    reloadModules(extensions)
 end
 
 -- probably make this into a function to be called if wanted, so its not always removing all files on gameexit
@@ -534,7 +543,6 @@ local function deleteTempFiles()
     for _, file in ipairs(files) do
         if DET_DEBUG then log('D', 'deleteTempFiles', "Deleting file: " .. file) end
         FS:removeFile(file)
-        end
     end
     log('W', 'deleteTempFiles', "Done")
 	GMSGMessage("Done", "Info", "info", 2000)
@@ -548,6 +556,7 @@ M.onExit = deleteTempFiles
 M.deleteTempFiles = deleteTempFiles
 M.generateSeparateMods = generateSeparateMods
 M.getTemplateNames = getTemplateNames
+M.loadTemplateNames = loadTemplateNames
 M.generateSpecificMod = generateSpecificMod
 M.loadSettings = loadSettings
 M.saveSettings = saveSettings

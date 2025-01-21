@@ -1,0 +1,10 @@
+{"GMSGSettingsToggle": {
+        "cat":"GMSG",
+        "order": 1,
+        "ctx": "tlua",
+        "onDown": "if tommot_gmsgUI then tommot_gmsgUI.toggleUI() end",
+        "actionMap": "Global",
+        "title": "Settings",
+        "desc": "Shows or hides the settings window."
+    }
+}
