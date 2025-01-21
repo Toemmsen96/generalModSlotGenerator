@@ -18,7 +18,8 @@ end
 local templates = getTemplate()
 local selectedTemplate = templates[1]
 
-local outputPath = ffi.new("char[?]", 256, "/gmsg/output/")
+local outputPath = ffi.new("char[?]", 256, "/unpacked/gmsg_out/")
+local autopackCheckboxValue = ffi.new("bool[1]", false)
 
 local function toggleUI()
     M.showUI = not M.showUI
@@ -60,8 +61,17 @@ local function render()
     imgui.Text("Enter Output Path:")
     imgui.InputText("##outputPath", outputPath, 256, imgui.InputTextFlags_EnterReturnsTrue)
 
-    if imgui.Button("Generate all") then
-        gmsg.generateSpecificMod(selectedTemplate, selectedTemplate, ffi.string(outputPath))
+    if imgui.Button("Generate selected Mod") then
+        gmsg.generateSpecificMod(selectedTemplate, selectedTemplate, ffi.string(outputPath), autopackCheckboxValue[0])
+    end
+
+    imgui.Text("Autopack generated Mod:")
+    imgui.Checkbox("##checkbox", autopackCheckboxValue)
+
+    if autopackCheckboxValue[0] then
+        imgui.Text("Feature is enabled")
+    else
+        imgui.Text("Feature is disabled")
     end
 
     if imgui.Button("Get Templates") then

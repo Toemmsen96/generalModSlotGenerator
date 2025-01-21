@@ -479,7 +479,7 @@ local function generateMultiSlotMod()
     end
 end
 
-local function generateSpecificMod(templatePath, templateName, outputPath)
+local function generateSpecificMod(templatePath, templateName, outputPath, autoPack)
     if isEmptyOrWhitespace(templatePath) then
         log('E', 'generateSpecificMod', "templatePath is empty")
         GMSGMessage("Error: templatePath is empty", "Error", "error", 5000)
@@ -494,6 +494,9 @@ local function generateSpecificMod(templatePath, templateName, outputPath)
         log('E', 'generateSpecificMod', "outputPath is empty")
         GMSGMessage("Error: outputPath is empty", "Error", "error", 5000)
         return
+    end
+    if autoPack == nil then
+        autoPack = AUTOPACK
     end
     template = readJsonFile(templatePath)
     if template ~= nil then
@@ -514,6 +517,10 @@ local function generateSpecificMod(templatePath, templateName, outputPath)
     if template ~= nil then
         generateAllSpecific(templateName, outputPath)
     end
+    if autoPack then
+        GMSGMessage("Autopacking generated mod", "Info", "info", 2000)
+        core_modmanager.packMod("/mods"..outputPath:lower())
+    end
 end
 
 
@@ -530,8 +537,7 @@ local function onExtensionLoaded()
         end
 		GMSGMessage("Done generating all mods", "Info", "info", 4000)
     end
-    extensions.load("tommot_gmsgUI")
-    reloadModules(extensions)
+    extensions.reload("tommot_gmsgUI")
 end
 
 -- probably make this into a function to be called if wanted, so its not always removing all files on gameexit
