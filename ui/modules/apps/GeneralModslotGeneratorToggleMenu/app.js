@@ -1,5 +1,5 @@
 angular.module('beamng.apps')
-.directive('gmsgToggleMenu', ['$timeout', function ($timeout) {
+.directive('generalModslotGeneratorToggleMenu', [function () {
   return {
     template:
     '<div style="max-height:100%; width:100%;" layout="row" layout-align="center center" layout-wrap class="bngApp">' +
