@@ -43,8 +43,10 @@ local function getTemplate()
 end
 
 local templates = getTemplate()
-local selectedTemplate = templates[1]
-
+local selectedTemplate = nil
+if templates then 
+    selectedTemplate = templates[1]
+end 
 
 local function toggleUI()
     M.showUI = not M.showUI

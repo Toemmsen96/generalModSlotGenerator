@@ -18,6 +18,10 @@ local AUTO_APPLY_SETTINGS = false -- defines if settings are automatically appli
 local AUTOPACK = false -- defines if the mod should be autopacked
 local GENERATED_PATH = "/mods/unpacked/generatedModSlot"
 local SETTINGS_PATH = "/settings/GMSG_Settings.json"
+local customOutputPath = nil
+local customOutputName = nil
+local isWaitingForAutoPack = false
+local isWaitingForPackAll = false
 -- end constants
 
 --helpers
@@ -45,7 +49,7 @@ local function logToConsole(level, func, message)
         log('E', func, message)
         return
     end
-    log(level, "EngineSwapGenerator", func .. ": " .. message)
+    log(level, "GeneralModSlotGenerator(MultiSlot)", func .. ": " .. message)
 end
 
 local function GMSGMessage(msg, title, type, timeOut)
@@ -109,7 +113,7 @@ end
 local function loadSettings()
     local settings = readJsonFile(SETTINGS_PATH)
     if settings == nil then
-        log('W', 'loadSettings', "Failed to any saved settings, using defaults")
+        log('W', 'loadSettings', "Failed to find any saved settings, using defaults")
         settings = readJsonFile("/lua/ge/extensions/tommot/GMSG_Settings.json")
     end
     if settings ~= nil then
@@ -172,7 +176,7 @@ local function getAllVehicles()
 end
 
 local function getModSlotJbeamPath(vehicleDir, templateName)
-    local path = GENERATED_PATH.."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_" .. templateName .. ".jbeam"
+    local path = GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_" .. templateName .. ".jbeam"
     return path
 end
 
@@ -369,7 +373,7 @@ local function generateMulti(vehicleDir)
             end
         end
     end
-    local savePath = GENERATED_PATH.."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_multiMod.jbeam"
+    local savePath = GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_multiMod.jbeam"
     makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multiMod")
 end
 
@@ -379,6 +383,14 @@ local function saveMultiTemplate(template, templateName)
 end
 
 --generation stuff
+local function onFinishGen()
+    core_modmanager.initDB()
+    if AUTOPACK then
+        isWaitingForPackAll = true
+        logToConsole('W', 'onExtensionLoaded', "Queued for Autopack")
+    end
+end
+
 local function generate(vehicleDir, templateName)
     local existingData = loadExistingModSlotData(vehicleDir,templateName)
     local existingVersion = findTemplateVersion(existingData)
@@ -405,24 +417,12 @@ local function generate(vehicleDir, templateName)
 end
 
 local function generateSpecific(vehicleDir, templateName, outputPath)
-    --local existingData = loadExistingModSlotData(vehicleDir,templateName)
-    local existingVersion = findTemplateVersion(existingData)
     local vehicleModSlot = getModSlot(vehicleDir)
     if vehicleModSlot == nil then
         log('D', 'generateSpecific', vehicleDir .. " has no mod slot")
         return
     end
-    if existingData == nil then
-        log('D', 'generateSpecific', "No existingData for " .. vehicleDir)
-    else
-        log('D', 'generateSpecific', "Loaded existing Version: " .. existingVersion .. " for " .. vehicleDir)
-    end
-    if existingData ~= nil and existingVersion == templateVersion then
-        log('D', 'generateSpecific', vehicleDir .. " up to date")
-        return
-    else
-        log('D', 'generateSpecific', vehicleDir .. " NOT up to date, updating")
-    end
+    log('D', 'generateSpecific', "Generating specific mod: " .. vehicleDir .. " " .. templateName .. " " .. outputPath)
     makeAndSaveCustomTemplate(vehicleDir, vehicleModSlot, template, templateName, outputPath)
 end
 
@@ -433,6 +433,7 @@ local function generateAll(templateName)
         --generate(veh, templateName)
     end
     log('D', 'generateAll', "done")
+    onFinishGen()
 end
 
 -- For concurrency with the job system
@@ -443,6 +444,7 @@ local function generateAllJob(job)
         job.yield()
     end
     log('D', 'generateAll', "done")
+    onFinishGen()
 end
 local function generateAllSpecific(templateName, outputPath)
     log('D', 'generateAllSpecific', "running generateAllSpecific()")
@@ -464,6 +466,7 @@ local function generateSeparateJob(job)
         end
     end
 	GMSGMessage("Done generating separate mods", "Info", "info", 2000)
+    onFinishGen()
 end
 
 local function generateSeparateMods()
@@ -476,6 +479,7 @@ local function generateSeparateMods()
         end
     end
 	GMSGMessage("Done generating separate mods", "Info", "info", 2000)
+    onFinishGen()
 end
 
 local function generateMultiSlotJob(job)
@@ -493,6 +497,7 @@ local function generateMultiSlotJob(job)
         job.yield()
     end
     GMSGMessage("Done generating all mods", "Info", "info", 2000)
+    onFinishGen()
 end
 
 local function generateMultiSlotMod()
@@ -505,6 +510,7 @@ local function generateMultiSlotMod()
 	for _,veh in pairs(getAllVehicles()) do
 		generateMulti(veh)
     end
+    onFinishGen()
 end
 
 local function generateSpecificMod(templatePath, templateName, outputPath, autoPack, includeMStemplate)
@@ -549,15 +555,45 @@ local function generateSpecificMod(templatePath, templateName, outputPath, autoP
     if template ~= nil then
         generateAllSpecific(templateName, outputPath)
     end
+    if includeMStemplate then
+        -- TODO: Copy the template to "outputPath/modslotgenerator/templateName.json"
+    end
     if autoPack then
         GMSGMessage("Autopacking generated mod", "Info", "info", 2000)
-        core_modmanager.packMod("/mods"..outputPath:lower())
+        customOutputPath = outputPath
+        customOutputName = core_modmanager.getModNameFromPath(outputPath)
+        core_modmanager.initDB()
+        isWaitingForAutoPack = true
     end
 end
 
+local function isModInDB(nameToCheck)
+    logToConsole('D', 'checkForModName', "Checking for mod: " .. nameToCheck)
+    if not nameToCheck then return false end
+    
+    nameToCheck = nameToCheck:lower()
+    local mods = core_modmanager.getMods()
+    
+    if not mods then
+        logToConsole('E', 'checkForModName', "Failed to get mods list")
+        return false
+    end
+    
+    -- Iterate through mods table using pairs instead of ipairs
+    for modId, mod in pairs(mods) do
+        if mod and mod.modname and mod.modname:lower() == nameToCheck then
+            logToConsole('D', 'checkForModName', "Found mod: " .. mod.modname)
+            return true
+        end
+    end
+    return false
+end
 
-
-local function onExtensionLoaded()
+local function onExtensionLoaded() -- TODO: needs check if the Extension's already running. Otherwise modScript reruns this
+    if extensions.isExtensionLoaded("tommot_gmsgUI") then 
+        logToConsole('W', 'onExtensionLoaded', "Already loaded, returning.")
+        return
+    end
     log('D', 'onExtensionLoaded', "Mods/TommoT ModSlot Generator Loaded")
     loadSettings()
     GMSGMessage("MultiSlot Generator Loaded, starting to generate.", "Info", "info", 3000)
@@ -569,31 +605,71 @@ local function onExtensionLoaded()
         end
 		GMSGMessage("Done generating all mods", "Info", "info", 4000)
     end
-    if AUTOPACK then
-        core_modmanager.packMod(GENERATED_PATH:lower())
-    end
+
     extensions.reload("tommot_gmsgUI")
+end
+
+
+
+local function onGuiUpdate()
+    if isWaitingForAutoPack and customOutputPath ~= nil then
+        if isModInDB(customOutputName) then
+            logToConsole('D', 'Autopack', "Packing mod: /mods" .. customOutputPath:lower())
+            core_modmanager.packMod("/mods"..customOutputPath:lower())
+            isWaitingForAutoPack = false
+        end 
+    end
+    if isWaitingForPackAll then
+        if core_modmanager.modIsUnpacked("generatedmodslot") then -- TODO: FIX loop
+    --    if isModInDB("generatedmodslot") then
+            logToConsole('D', 'Autopack', "Packing generatedModSlot")
+            isWaitingForPackAll = false
+            core_modmanager.packMod(GENERATED_PATH:lower())
+        end
+    end
+
 end
 
 -- probably make this into a function to be called if wanted, so its not always removing all files on gameexit
 local function deleteTempFiles()
     --delete all files in /mods/unpacked/generatedModSlot
     log('W', 'deleteTempFiles', "Deleting all files in /mods/unpacked/generatedModSlot")
-	GMSGMessage("Deleting all files in /mods/unpacked/generatedModSlot", "Info", "info", 2000)
+    GMSGMessage("Deleting all files in /mods/unpacked/generatedModSlot", "Info", "info", 2000)
+    
+    -- Delete files in GENERATED_PATH
     local files = FS:findFiles(GENERATED_PATH, "*", -1, true, false)
     for _, file in ipairs(files) do
         if DET_DEBUG then log('D', 'deleteTempFiles', "Deleting file: " .. file) end
         FS:removeFile(file)
     end
+
+    -- Delete files in lowercase path
+    local filesLower = FS:findFiles(GENERATED_PATH:lower(), "*", -1, true, false)
+    for _, file in ipairs(filesLower) do
+        if DET_DEBUG then log('D', 'deleteTempFiles', "Deleting file: " .. file) end 
+        FS:removeFile(file)
+    end
+
+    -- Delete packed Zip
+    core_modmanager.deleteMod("generatedmodslot")
+
     log('W', 'deleteTempFiles', "Done")
-	GMSGMessage("Done", "Info", "info", 2000)
+    GMSGMessage("Done", "Info", "info", 2000)
+end
+
+local function onModDeactivated()
+    deleteTempFiles()
+    extensions.unload("tommot_gmsgUI") -- unloads UI
+    extensions.unload("tommot_modslotGenerator") -- unloads this
 end
 
 -- Exported functions for mod lifecycle
 M.onExtensionLoaded = onExtensionLoaded
-M.onModDeactivated = deleteTempFiles
+-- M.onModManagerReady = onExtensionLoaded
+M.onModDeactivated = onModDeactivated
 M.onModActivated = onExtensionLoaded
-M.onExit = deleteTempFiles
+M.onExit = onModDeactivated
+M.onGuiUpdate = onGuiUpdate
 
 -- Exported functions for mod generation
 M.generateMultiSlotMod = generateMultiSlotMod
