@@ -17,6 +17,7 @@ local outputPath = ffi.new("char[?]", 256, "/unpacked/gmsg_out/")
 local autopackCheckboxValue = ffi.new("bool[1]", false)
 local autopackAllCheckboxValue = ffi.new("bool[1]", false)
 local generateSeparateCheckboxValue = ffi.new("bool[1]", false)
+local generateMultiSlotCheckboxValue = ffi.new("bool[1]", true)
 local detailedDebugCheckboxValue = ffi.new("bool[1]", true)
 local useCoroutinesCheckboxValue = ffi.new("bool[1]", true)
 -- End Settings
@@ -28,10 +29,20 @@ local function loadSettings()
         settings = jsonReadFile("/lua/ge/extensions/tommot/GMSG_Settings.json")
     end
     if settings ~= nil then
-        generateSeparateCheckboxValue[0] = settings.SeparateMods
-        detailedDebugCheckboxValue[0] = settings.DetailedDebug
-        useCoroutinesCheckboxValue[0] = settings.UseCoroutines
-        autopackAllCheckboxValue[0] = settings.Autopack
+        local settingsMap = {
+            SeparateMods = generateSeparateCheckboxValue,
+            MultiSlotMods = generateMultiSlotCheckboxValue,
+            DetailedDebug = detailedDebugCheckboxValue,
+            UseCoroutines = useCoroutinesCheckboxValue,
+            Autopack = autopackAllCheckboxValue
+        }
+
+        for key, value in pairs(settingsMap) do
+            if settings[key] ~= nil then
+                value[0] = settings[key]
+                gmsg.logToConsole('I',"loadSettings","Loaded setting: " .. key .. " = " .. tostring(value[0]))
+            end
+        end
     end 
     if settings == nil then
         gmsg.logToConsole('E',"loadSettings","Failed to load settings, using defaults")
@@ -114,6 +125,14 @@ local function render()
             imgui.Checkbox("##generateSeparateCheckbox", generateSeparateCheckboxValue)
             imgui.SameLine()
             imgui.Text("Generate Separate Mods")
+            imgui.Text("(Generates all Templates as normal \"Additional Modification\"-Mods)")
+
+        
+            imgui.Checkbox("##generateMultiSlotCheckbox", generateMultiSlotCheckboxValue)
+            imgui.SameLine()
+            imgui.Text("Generate MultiSlot Mods")
+            imgui.Text("(Enables Multiple \"Additional Modification\"-Mods at the same time. Select \"MultiSlot-Base\")")
+        
         
             imgui.Checkbox("##detailedDebugCheckbox", detailedDebugCheckboxValue)
             imgui.SameLine()
@@ -130,6 +149,7 @@ local function render()
             if imgui.Button("Save Settings") then
                 local settings = {
                     SeparateMods = generateSeparateCheckboxValue[0],
+                    MultiSlotMods = generateMultiSlotCheckboxValue[0],
                     DetailedDebug = detailedDebugCheckboxValue[0],
                     UseCoroutines = useCoroutinesCheckboxValue[0],
                     AutoApplySettings = false,

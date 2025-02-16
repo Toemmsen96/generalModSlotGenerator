@@ -2,5 +2,6 @@
     "UseCoroutines": true,
     "DetailedDebug": true,
     "SeparateMods": false,
+    "MultiSlotMods": true,
     "Autopack": false
 }

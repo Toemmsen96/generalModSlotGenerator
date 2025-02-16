@@ -10,7 +10,8 @@ local template = nil
 local templateVersion = -1
 local templateNames = nil
 -- settings
-local SEPARATE_MODS = false -- defines if templates also generate separate mods for each vehicle
+local SEPARATE_MODS = false -- defines if templates generate separate mods for each vehicle
+local MULTISLOT_MODS = true -- defines if templates generate multi mods for each vehicle
 local DET_DEBUG = false -- defines if debug messages are printed
 local LOGLEVEL = 2 -- 0 = no logs, 1 = info, 2 = debug
 local USE_COROUTINES = true -- defines if coroutines are used to generate mods
@@ -45,7 +46,7 @@ local function logToConsole(level, func, message)
         log('E', func, message)
         return
     end
-    log(level, "EngineSwapGenerator", func .. ": " .. message)
+    log(level, func, message)
 end
 
 local function GMSGMessage(msg, title, type, timeOut)
@@ -114,11 +115,12 @@ local function loadSettings()
     end
     if settings ~= nil then
         SEPARATE_MODS = settings.SeparateMods
+        MULTISLOT_MODS = settings.MultiSlotMods
         DET_DEBUG = settings.DetailedDebug
         USE_COROUTINES = settings.UseCoroutines
         AUTO_APPLY_SETTINGS = settings.AutoApplySettings
         AUTOPACK = settings.Autopack
-        GMSGMessage("Settings loaded: SeparateMods: " .. tostring(SEPARATE_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES), "Info", "info", 2000)
+        GMSGMessage("Settings loaded: SeparateMods: " .. tostring(SEPARATE_MODS) .. " MultiSlot: " .. tostring(MULTISLOT_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES).." Autopack all: "..tostring(AUTOPACK), "Info", "info", 2000)
         sendSettingsToUI()
     end 
     if settings == nil then
@@ -129,13 +131,14 @@ end
 local function saveSettings()
     local settings = {
         SeparateMods = SEPARATE_MODS,
+        MultiSlotMods = MULTISLOT_MODS,
         DetailedDebug = DET_DEBUG,
         UseCoroutines = USE_COROUTINES,
         AutoApplySettings = AUTO_APPLY_SETTINGS,
         Autopack = AUTOPACK
     }
     writeJsonFile(SETTINGS_PATH, settings, true)
-    GMSGMessage("Settings saved: SeparateMods: " .. tostring(SEPARATE_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES), "Info", "info", 2000)
+    GMSGMessage("Settings saved: SeparateMods: " .. tostring(SEPARATE_MODS) .." MultiSlot: "..tostring(MULTISLOT_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES).." Autopack all: ".. tostring(AUTOPACK), "Info", "info", 2000)
     sendSettingsToUI()
 end
 
@@ -353,12 +356,12 @@ end
 local function generateMulti(vehicleDir)
     local multiModTemplate = readJsonFile("/lua/ge/extensions/tommot/mSGTemplate.json")
     if multiModTemplate == nil then
-        log('E', 'generateMulti', "Failed to load multiModTemplate")
+        logToConsole('E', 'generateMulti', "Failed to load multiModTemplate")
         return
     end
     local vehicleModSlot = getModSlot(vehicleDir)
     if vehicleModSlot == nil then
-        if DET_DEBUG then log('D', 'generateMulti', vehicleDir .. " has no mod slot") end
+        if DET_DEBUG then logToConsole('D', 'generateMulti', vehicleDir .. " has no mod slot") end
         return
     end
     multiModTemplate.slotType = vehicleModSlot
@@ -563,9 +566,13 @@ local function onExtensionLoaded()
     GMSGMessage("MultiSlot Generator Loaded, starting to generate.", "Info", "info", 3000)
     if getTemplateNames() then
         if SEPARATE_MODS then
-            if USE_COROUTINES then core_jobsystem.create(generateSeparateJob, 1/60) else generateSeparateMods() end
-        else
-            if USE_COROUTINES then core_jobsystem.create(generateMultiSlotJob, 1/60) else generateMultiSlotMod() end
+            if USE_COROUTINES then core_jobsystem.create(generateSeparateJob, 1/100) else generateSeparateMods() end
+        end
+        if MULTISLOT_MODS then
+            if USE_COROUTINES then core_jobsystem.create(generateMultiSlotJob, 1/100) else generateMultiSlotMod() end
+        end
+        if not SEPARATE_MODS and not MULTISLOT_MODS then
+            GMSGMessage("No generation method selected", "Warning", "warning", 5000)
         end
 		GMSGMessage("Done generating all mods", "Info", "info", 4000)
     end
