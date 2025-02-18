@@ -560,6 +560,15 @@ local function generateSpecificMod(templatePath, templateName, outputPath, autoP
     end
     if includeMStemplate then
         -- TODO: Copy the template to "outputPath/modslotgenerator/templateName.json"
+        local templateCopy = deepcopy(template)
+        local success = false
+        if ends_with(outputPath,"/") then
+        log('D', 'generateSpecificMod', "Copying template to: /mods" .. outputPath .. "modslotgenerator/" .. templateName .. ".json")
+        writeJsonFile("/mods"..outputPath .. "modslotgenerator/" .. templateName .. ".json", templateCopy, true)
+        else
+            log('D', 'generateSpecificMod', "Copying template to: /mods" .. outputPath .. "/modslotgenerator/" .. templateName .. ".json")
+            writeJsonFile("/mods"..outputPath .. "/modslotgenerator/" .. templateName .. ".json", templateCopy, true)
+        end
     end
     if autoPack then
         GMSGMessage("Autopacking generated mod", "Info", "info", 2000)
