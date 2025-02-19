@@ -21,6 +21,8 @@ local generateMultiSlotCheckboxValue = ffi.new("bool[1]", true)
 local detailedDebugCheckboxValue = ffi.new("bool[1]", true)
 local useCoroutinesCheckboxValue = ffi.new("bool[1]", true)
 local includeMStemplate = ffi.new("bool[1]", true)
+local addDependencyDownloader = ffi.new("bool[1]", true)
+local advancedModeCheckbox = ffi.new("bool[1]", false)
 -- End Settings
 
 local function loadSettings()
@@ -108,12 +110,16 @@ local function render()
                 imgui.SetTooltip("Defines where the generated Mod will be saved relative to the mods-Folder in AppData (Default: /unpacked/gmsg_out/)")
             end
 
-            imgui.Checkbox("##autopackCheckbox", autopackCheckboxValue)
+            if imgui.Checkbox("##autopackCheckbox", autopackCheckboxValue) or imgui.IsItemClicked() then
+                autopackCheckboxValue[0] = not autopackCheckboxValue[0]
+            end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("Automatically packs the generated Mod into a .zip file, which will then be in the mods-Folder")
             end
             imgui.SameLine()
-            imgui.Text("Autopack generated Mod")
+            if imgui.Selectable1("Autopack generated Mod", autopackCheckboxValue[0]) then
+                autopackCheckboxValue[0] = not autopackCheckboxValue[0]
+            end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("Automatically packs the generated Mod into a .zip file, which will then be in the mods-Folder")
             end
@@ -123,13 +129,42 @@ local function render()
                 imgui.SetTooltip("Enables the MultiSlot-Template to be included in the generated Mod and with that compatibility with MultiSlot-Mods and automatic generation. (Recommended)")
             end
             imgui.SameLine()
-            imgui.Text("Include MultiSlot-Template")
+            if imgui.Selectable1("Include MultiSlot-Template", includeMStemplate[0]) then
+                includeMStemplate[0] = not includeMStemplate[0]
+            end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("Enables the MultiSlot-Template to be included in the generated Mod and with that compatibility with MultiSlot-Mods and automatic generation. (Recommended)")
             end
+
+            if includeMStemplate[0] then
+                imgui.Checkbox("##addDependencyDownloader", addDependencyDownloader)
+            else
+                imgui.BeginDisabled()
+                addDependencyDownloader[0] = false
+                imgui.Checkbox("##addDependencyDownloader", addDependencyDownloader)
+                imgui.EndDisabled()
+            end
+            if imgui.IsItemHovered() then
+                if not includeMStemplate[0] then
+                    imgui.SetTooltip("Enable 'Include MultiSlot-Template' to use this option")
+                else
+                    imgui.SetTooltip("Adds the Dependency-Downloader to the generated Mod, which will automatically download the required MultiSlot-Mod from the Repository")
+                end
+            end
+            imgui.SameLine()
+            if imgui.Selectable1("Add Dependency-Downloader", addDependencyDownloader[0]) then
+                addDependencyDownloader[0] = not addDependencyDownloader[0]
+            end
+            if imgui.IsItemHovered() then
+                if not includeMStemplate[0] then
+                    imgui.SetTooltip("Enable 'Include MultiSlot-Template' to use this option")
+                else
+                    imgui.SetTooltip("Adds the Dependency-Downloader to the generated Mod, which will automatically download the required MultiSlot-Mod from the Repository")
+                end
+            end
     
             if imgui.Button("Generate selected Mod") then
-                gmsg.generateSpecificMod(selectedTemplate, selectedTemplate, ffi.string(outputPath), autopackCheckboxValue[0], includeMStemplate[0])
+                gmsg.generateSpecificMod(selectedTemplate, selectedTemplate, ffi.string(outputPath), autopackCheckboxValue[0],addDependencyDownloader[0], includeMStemplate[0])
             end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("Generates the selected mod with the specified settings")
@@ -139,18 +174,39 @@ local function render()
         end
 
         if imgui.BeginTabItem("Generate Manually") then
+            
+            
             if imgui.Button("Generate MuliSlot-Mods") then
                 gmsg.generateMultiSlotMod()
             end
             if imgui.IsItemHovered() then
-                imgui.SetTooltip("Generates all Templates as MultiSlot-Mods and the MultiSlot-Base-Mod")
+                imgui.SetTooltip("Generates all Templates as MultiSlot-Mods and the MultiSlot-Base-Mod, (Lag-Spike)")
             end
+            
+            
+            if imgui.Button("Generate MuliSlot-Mods concurrently") then
+                core_jobsystem.create(gmsg.generateMultiSlotJob, 1/100)
+            end
+            if imgui.IsItemHovered() then
+                imgui.SetTooltip("Generates all Templates as MultiSlot-Mods and the MultiSlot-Base-Mod, less lag")
+            end
+
+
             if imgui.Button("Generate SingleSlot-Mods") then
                 gmsg.generateSeparateMods()
             end
             if imgui.IsItemHovered() then
-                imgui.SetTooltip("Generates all Templates as normal \"Additional Modification\"-Mods")
+                imgui.SetTooltip("Generates all Templates as normal \"Additional Modification\"-Mods, (Lag-Spike)")
             end
+
+            if imgui.Button("Generate SingleSlot-Mods concurrently") then
+                core_jobsystem.create(gmsg.generateSeparateJob, 1/100)
+            end
+            if imgui.IsItemHovered() then
+                imgui.SetTooltip("Generates all Templates as normal \"Additional Modification\"-Mods, less lag")
+            end
+
+
             imgui.EndTabItem()
         end
 
@@ -158,37 +214,45 @@ local function render()
         if imgui.BeginTabItem("Settings") then
             imgui.Checkbox("##generateSeparateCheckbox", generateSeparateCheckboxValue)
             imgui.SameLine()
-            imgui.Text("Generate Separate Mods")
+            if imgui.Selectable1("Generate Separate Mods", generateSeparateCheckboxValue[0]) then
+                generateSeparateCheckboxValue[0] = not generateSeparateCheckboxValue[0]
+            end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("If enabled, makes the Mod generate all Templates as normal \"Additional Modification\"-Mods")
             end
 
-        
             imgui.Checkbox("##generateMultiSlotCheckbox", generateMultiSlotCheckboxValue)
             imgui.SameLine()
-            imgui.Text("Generate MultiSlot Mods")
+            if imgui.Selectable1("Generate MultiSlot Mods", generateMultiSlotCheckboxValue[0]) then
+                generateMultiSlotCheckboxValue[0] = not generateMultiSlotCheckboxValue[0]
+            end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("If enabled, makes the Mod generate all Templates as MultiSlot-Mods, which use the MultiSlot-Base-\"Additional Modification\"-Mod")
             end
-        
-        
+
             imgui.Checkbox("##detailedDebugCheckbox", detailedDebugCheckboxValue)
             imgui.SameLine()
-            imgui.Text("Detailed Debug")
+            if imgui.Selectable1("Detailed Debug", detailedDebugCheckboxValue[0]) then
+                detailedDebugCheckboxValue[0] = not detailedDebugCheckboxValue[0]
+            end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("If enabled, the Mod will log more detailed information to the console and the UI (may impact performance)")
             end
-        
+
             imgui.Checkbox("##useCoroutinesCheckbox", useCoroutinesCheckboxValue)
             imgui.SameLine()
-            imgui.Text("Generate Mods concurrently (less of a lag spike)")
+            if imgui.Selectable1("Generate Mods concurrently (less of a lag spike)", useCoroutinesCheckboxValue[0]) then
+                useCoroutinesCheckboxValue[0] = not useCoroutinesCheckboxValue[0]
+            end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("If enabled, the Mod will generate Mods concurrently, which will reduce the lag spike when generating Mods (disabling will impact performance)")
             end
-        
+
             imgui.Checkbox("##autopackAllCheckbox", autopackAllCheckboxValue)
             imgui.SameLine()
-            imgui.Text("Autopack all generated Mods")
+            if imgui.Selectable1("Autopack all generated Mods", autopackAllCheckboxValue[0]) then
+                autopackAllCheckboxValue[0] = not autopackAllCheckboxValue[0]
+            end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("If enabled, all generated Mods will be automatically packed into a .zip file, which will then be in the mods-Folder, instead of the unpacked folder. \nThis can improve performance and reduce clutter & file size, but may make GMSG / MultiSlot-Generation slower and more complex")
             end
@@ -215,6 +279,29 @@ local function render()
             end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("Reloads the Templates from the mods-Folder, updates the list in the UI and the Mod")
+            end
+
+            if imgui.Button("Reload ModDB") then
+                core_modmanager.initDB()
+            end
+            if imgui.IsItemHovered() then
+                imgui.SetTooltip("Reloads the ModDB by running the vanilla initDB, which will update the list of Mods in the Mod-Manager")
+            end
+            imgui.Checkbox("##advancedMode", advancedModeCheckbox)
+            imgui.SameLine()
+            imgui.Text("Advanced Mode")
+            if imgui.IsItemHovered() then
+                imgui.SetTooltip("Enable advanced features (use with caution)")
+            end
+
+            if advancedModeCheckbox[0] then
+                if imgui.Button("Reload GELUA") then
+                    Lua:requestReload()
+                    ui_message('engine.lua.reloaded', 2, 'lua', 'refresh')
+                end
+                if imgui.IsItemHovered() then
+                    imgui.SetTooltip("Reloads all Lua extensions (warning: will lag the game and take a moment)")
+                end
             end
             imgui.EndTabItem()
         end

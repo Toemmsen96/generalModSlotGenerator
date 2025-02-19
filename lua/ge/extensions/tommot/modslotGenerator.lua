@@ -516,7 +516,7 @@ local function generateMultiSlotMod()
     onFinishGen()
 end
 
-local function generateSpecificMod(templatePath, templateName, outputPath, autoPack, includeMStemplate)
+local function generateSpecificMod(templatePath, templateName, outputPath, autoPack,addDependencyDownloader, includeMStemplate)
     if isEmptyOrWhitespace(templatePath) then
         log('E', 'generateSpecificMod', "templatePath is empty")
         GMSGMessage("Error: templatePath is empty", "Error", "error", 5000)
@@ -539,6 +539,10 @@ local function generateSpecificMod(templatePath, templateName, outputPath, autoP
         includeMStemplate = false
     end
 
+    if addDependencyDownloader == nil then
+        addDependencyDownloader = false
+    end
+
     template = readJsonFile(templatePath)
     if template ~= nil then
         templateVersion = template.version
@@ -558,6 +562,48 @@ local function generateSpecificMod(templatePath, templateName, outputPath, autoP
     if template ~= nil then
         generateAllSpecific(templateName, outputPath)
     end
+
+    if addDependencyDownloader then
+        log('D', 'generateSpecificMod', "Adding dependency downloader files")
+        -- Copy files maintaining folder structure
+        local depDownloaderPath = "/ModSlotGeneratorExampleTemplates/depDownloader"
+        local depDownloaderFiles = FS:findFiles(depDownloaderPath, "*", -1, true, false)
+        for _, file in ipairs(depDownloaderFiles) do
+            -- Get relative path by removing the base path
+            local relativePath = file:sub(#depDownloaderPath + 2) -- +2 to remove leading /
+            local targetPath = "mods/" .. outputPath .. "/" .. relativePath
+            
+            log('D', 'generateSpecificMod', "Copying file: " .. file .. " to " .. targetPath)
+            
+            -- Read file content
+            local fileHandle = io.open(file, "r")
+            if fileHandle then
+                local content = fileHandle:read("*all")
+                fileHandle:close()
+                
+                -- Create directory structure
+                local dir = targetPath:match("(.*[/\\])")
+                if dir then
+                    FS:directoryCreate(dir, true)
+                end
+                
+                -- Write content to new location
+                local outHandle = io.open(targetPath, "w")
+                if outHandle then
+                    outHandle:write(content)
+                    outHandle:close()
+                else
+                    log('E', 'generateSpecificMod', "Failed to write to " .. targetPath)
+                end
+            else
+                log('E', 'generateSpecificMod', "Failed to read from " .. file)
+            end
+        end
+        log('D', 'generateSpecificMod', "Done adding dependency downloader files")
+    end
+
+
+
     if includeMStemplate then
         -- TODO: Copy the template to "outputPath/modslotgenerator/templateName.json"
         local templateCopy = deepcopy(template)
@@ -689,7 +735,9 @@ M.onGuiUpdate = onGuiUpdate
 
 -- Exported functions for mod generation
 M.generateMultiSlotMod = generateMultiSlotMod
+M.generateMultiSlotJob = generateMultiSlotJob
 M.generateSeparateMods = generateSeparateMods
+M.generateSeparateJob = generateSeparateJob
 M.generateSpecificMod = generateSpecificMod
 
 -- Exported functions for template management
