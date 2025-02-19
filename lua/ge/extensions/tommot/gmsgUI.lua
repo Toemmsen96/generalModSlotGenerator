@@ -254,7 +254,7 @@ local function render()
                 autopackAllCheckboxValue[0] = not autopackAllCheckboxValue[0]
             end
             if imgui.IsItemHovered() then
-                imgui.SetTooltip("If enabled, all generated Mods will be automatically packed into a .zip file, which will then be in the mods-Folder, instead of the unpacked folder. \nThis can improve performance and reduce clutter & file size, but may make GMSG / MultiSlot-Generation slower and more complex")
+                imgui.SetTooltip("(WIP, buggy!) If enabled, all generated Mods will be automatically packed into a .zip file, which will then be in the mods-Folder, instead of the unpacked folder. \nThis can improve performance and reduce clutter & file size, but may make GMSG / MultiSlot-Generation slower and more complex")
             end
         
             if imgui.Button("Save Settings") then
