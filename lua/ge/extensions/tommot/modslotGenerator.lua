@@ -719,10 +719,19 @@ local function deleteTempFiles()
     GMSGMessage("Done", "Info", "info", 2000)
 end
 
-local function onModDeactivated()
-    deleteTempFiles()
-    extensions.unload("tommot_gmsgUI") -- unloads UI
-    extensions.unload("tommot_modslotGenerator") -- unloads this
+local function onModDeactivated(mod)
+    -- Check if mod is one of the mods connected to this script
+    local validMods = {
+        ["generatedmodslot"] = true,
+        ["generalmodslotgenerator"] = true,
+        ["tommot_gmsg"] = true
+    }
+    if validMods[mod.modname] then
+        deleteTempFiles()
+        extensions.unload("tommot_gmsgUI") -- unloads UI
+        extensions.unload("tommot_modslotGenerator") -- unloads this
+    end
+
 end
 
 -- Exported functions for mod lifecycle
