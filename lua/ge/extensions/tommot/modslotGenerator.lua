@@ -97,6 +97,18 @@ end
 local function writeJsonFile(path, data, compact)
     return jsonWriteFile(path, data, compact)
 end
+
+local function getModNameFromPath(path) -- stolen from modmanager.lua lol, credits to BeamNG
+    local modname = string.lower(path)
+    modname = modname:gsub('dir:/', '') --should have been killed by now
+    modname = modname:gsub('/mods/', '')
+    modname = modname:gsub('repo/', '')
+    modname = modname:gsub('unpacked/', '')
+    modname = modname:gsub('/', '')
+    modname = modname:gsub('.zip$', '')
+    --log('I', 'getModNameFromPath', "getModNameFromPath path = "..path .."    name = "..dumps(modname) )
+    return modname
+end
 -- end helpers
 
 -- Editable settings
@@ -619,7 +631,8 @@ local function generateSpecificMod(templatePath, templateName, outputPath, autoP
     if autoPack then
         GMSGMessage("Autopacking generated mod", "Info", "info", 2000)
         customOutputPath = outputPath
-        customOutputName = core_modmanager.getModNameFromPath(outputPath)
+        customOutputName = getModNameFromPath(outputPath)
+        log('D', 'generateSpecificMod', "Queued "..customOutputName.." for Autopack with path:\n"..customOutputPath)
         core_modmanager.initDB()
         isWaitingForAutoPack = true
     end
