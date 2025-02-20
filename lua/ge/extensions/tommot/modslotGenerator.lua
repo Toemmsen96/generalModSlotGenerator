@@ -12,6 +12,7 @@ local templateNames = nil
 -- settings
 local SEPARATE_MODS = false -- defines if templates generate separate mods for each vehicle
 local MULTISLOT_MODS = true -- defines if templates generate multi mods for each vehicle
+local ADDITIONAL_TO_MULTISLOT = false -- defines if additional mods are added to the multi mod
 local DET_DEBUG = false -- defines if debug messages are printed
 local LOGLEVEL = 2 -- 0 = no logs, 1 = info, 2 = debug
 local USE_COROUTINES = true -- defines if coroutines are used to generate mods
@@ -675,7 +676,11 @@ local function onExtensionLoaded() -- TODO: needs check if the Extension's alrea
         if MULTISLOT_MODS then
             if USE_COROUTINES then core_jobsystem.create(generateMultiSlotJob, 1/100) else generateMultiSlotMod() end
         end
-        if not SEPARATE_MODS and not MULTISLOT_MODS then
+        if ADDITIONAL_TO_MULTISLOT then
+            extensions.load("tommot_additionalToMultiSlot")
+            tommot_additionalToMultiSlot.additionalToMultiSlot()
+        end
+        if not SEPARATE_MODS and not MULTISLOT_MODS and not ADDITIONAL_TO_MULTISLOT then
             GMSGMessage("No generation method selected", "Warning", "warning", 5000)
         end
 		GMSGMessage("Done generating all mods", "Info", "info", 4000)
@@ -741,6 +746,7 @@ local function onModDeactivated(mod)
     }
     if validMods[mod.modname] then
         deleteTempFiles()
+        extensions.unload("tommot_additionalToMultiSlot") -- unloads additionalToMultiSlot
         extensions.unload("tommot_gmsgUI") -- unloads UI
         extensions.unload("tommot_modslotGenerator") -- unloads this
     end
@@ -765,6 +771,7 @@ M.generateSpecificMod = generateSpecificMod
 -- Exported functions for template management
 M.getTemplateNames = getTemplateNames
 M.loadTemplateNames = loadTemplateNames
+M.makeAndSaveNewTemplate = makeAndSaveNewTemplate
 
 -- Exported functions for settings management
 M.loadSettings = loadSettings
@@ -775,5 +782,11 @@ M.sendSettingsToUI = sendSettingsToUI
 -- Exported utility functions
 M.deleteTempFiles = deleteTempFiles
 M.logToConsole = logToConsole
+M.GMSGMessage = GMSGMessage
+M.getAllVehicles = getAllVehicles
+
+-- Exported variables
+M.GENERATED_PATH = GENERATED_PATH
+-- M.SETTINGS_PATH = SETTINGS_PATH
 
 return M
