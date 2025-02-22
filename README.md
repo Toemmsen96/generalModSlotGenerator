@@ -41,6 +41,8 @@ Can also generate everything as a separate, non Mulislot mod.
 - [ ] Compatibility to MultiSlot for all Mod-Slot-mods  
 - [ ] Tutorial on creating Plugins for this
 - [ ] Change Menu-Setting to Debug-Level instead of Detailed Debug toggle
+- [ ]  (Later maybe) Add Editor tab, to make Templates inside BeamNG
+</details>
 
 
 
