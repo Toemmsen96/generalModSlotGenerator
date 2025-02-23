@@ -686,7 +686,7 @@ local function onExtensionLoaded() -- TODO: needs check if the Extension's alrea
 		GMSGMessage("Done generating all mods", "Info", "info", 4000)
     end
 
-    extensions.reload("tommot_gmsgUI")
+    extensions.load("tommot_gmsgUI")
 end
 
 
@@ -744,6 +744,10 @@ local function onModDeactivated(mod)
         ["generalmodslotgenerator"] = true,
         ["tommot_gmsg"] = true
     }
+    if mod == nil then
+        log('E', 'onModDeactivated', "mod is nil")
+        return
+    end
     if validMods[mod.modname] then
         deleteTempFiles()
         extensions.unload("tommot_additionalToMultiSlot") -- unloads additionalToMultiSlot
