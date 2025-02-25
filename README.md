@@ -34,6 +34,11 @@ Can also generate everything as a separate, non Mulislot mod.
 
 </details>
 
+## Plugins
+- [My Plugins (GitHub)](https://github.com/Toemmsen96/MultiSlotPlugins)
+- Advanced Internals by [wlkmanist](https://www.beamng.com/members/wlkmanist.529857/):
+    - https://www.beamng.com/resources/advanced-internals.26605/
+
 ## TODO
 <details>
 <summary>Current todo list:</summary>
