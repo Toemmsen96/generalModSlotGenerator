@@ -3,6 +3,7 @@ This Mod aims to add a simple way to make "Additional Modification" - Mods for B
 
 You only need to add a Json-Template to ```/modslotgenerator/``` for a mod and it generates everything based on the Settings in the UI.  
 It also adds "MultiSlot" compatibility, so you can use multiple "Additional Modification" - mods at the same time.  
+[More Info](https://toemmsen.ch/posts/multislot/)
 ### App (old, abandoned)
 
 <details>
