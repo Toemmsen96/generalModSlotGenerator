@@ -161,20 +161,30 @@ end
 
 local function setModSettings(jsonData)
     local data = json.decode(jsonData)
+    
     if data.SeparateMods ~= nil then
         SEPARATE_MODS = data.SeparateMods
+        logToConsole('D', 'setModSettings', "SeparateMods: " .. tostring(SEPARATE_MODS))
     end
     if data.DetailedDebug ~= nil then
         DET_DEBUG = data.DetailedDebug
+        logToConsole('D', 'setModSettings', "DetailedDebug: " .. tostring(DET_DEBUG))
     end
     if data.UseCoroutines ~= nil then
         USE_COROUTINES = data.UseCoroutines
+        logToConsole('D', 'setModSettings', "UseCoroutines: " .. tostring(USE_COROUTINES))
     end
     if data.AutoApplySettings ~= nil then
         AUTO_APPLY_SETTINGS = data.AutoApplySettings
+        logToConsole('D', 'setModSettings', "AutoApplySettings: " .. tostring(AUTO_APPLY_SETTINGS))
     end
     if data.Autopack ~= nil then
         AUTOPACK = data.Autopack
+        logToConsole('D', 'setModSettings', "Autopack: " .. tostring(AUTOPACK))
+    end
+    if data.MultiSlotMods ~= nil then
+        MULTISLOT_MODS = data.MultiSlotMods
+        logToConsole('D', 'setModSettings', "MultiSlotMods: " .. tostring(MULTISLOT_MODS))
     end
     
     saveSettings()
@@ -686,7 +696,14 @@ local function onExtensionLoaded() -- TODO: needs check if the Extension's alrea
 		GMSGMessage("Done generating all mods", "Info", "info", 4000)
     end
 
-    extensions.load("tommot_gmsgUI")
+    extensions.load("tommot_gmsgUI") -- might need a check if it's already loaded
+end
+
+local function onExtensionUnloaded()
+    log('D', 'onExtensionUnloaded', "Mods/TommoT ModSlot Generator Unloaded")
+    --deleteTempFiles()
+    extensions.unload("tommot_additionalToMultiSlot")
+    extensions.unload("tommot_gmsgUI")
 end
 
 
@@ -759,6 +776,7 @@ end
 
 -- Exported functions for mod lifecycle
 M.onExtensionLoaded = onExtensionLoaded
+M.onExtensionUnloaded = onExtensionUnloaded
 -- M.onModManagerReady = onExtensionLoaded
 M.onModDeactivated = onModDeactivated
 M.onModActivated = onExtensionLoaded

@@ -302,6 +302,40 @@ local function render()
                 if imgui.IsItemHovered() then
                     imgui.SetTooltip("Reloads all Lua extensions (warning: will lag the game and take a moment)")
                 end
+
+                if imgui.Button("Reload gmsgUI") then
+                    toggleUI()
+                    local function reloadUIJob()
+                        extensions.unload("tommot_gmsgUI")
+                        extensions.load("tommot_gmsgUI")
+                        return
+                    end
+                    core_jobsystem.create(reloadUIJob, 1/60)
+                end
+
+                if imgui.Button("Reload GMSG / MultiSlot") then
+                    toggleUI()
+                    local function reloadGMSGJob()
+                        extensions.unload("tommot_modslotGenerator")
+                        extensions.load("tommot_modslotGenerator")
+                        return
+                    end
+                    core_jobsystem.create(reloadGMSGJob, 1/60)
+                end
+
+
+                if imgui.IsItemHovered() then
+                    imgui.SetTooltip("Reloads all Lua extensions (warning: will lag the game and take a moment)")
+                end
+
+
+                if imgui.Button("Load Dependency Installer UI") then
+                    extensions.load("tommot_depInstallerUi")
+                end
+                if imgui.IsItemHovered() then
+                    imgui.SetTooltip("Loads the Dependency Installer UI extension (gmsgDownloader needs to be installed)")
+                end
+
             end
             imgui.EndTabItem()
         end
