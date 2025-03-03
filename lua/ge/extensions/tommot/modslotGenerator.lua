@@ -24,6 +24,8 @@ local customOutputPath = nil
 local customOutputName = nil
 local isWaitingForAutoPack = false
 local isWaitingForPackAll = false
+local CONCURRENCY_DELAY = 1/100
+local TIMER_GENERATION = true
 -- end constants
 
 --helpers
@@ -188,6 +190,14 @@ local function setModSettings(jsonData)
     end
     
     saveSettings()
+end
+
+local function setConcurrencyDelay(delay)
+    if delay == nil then
+        log('E', 'setConcurrencyDelay', "delay is nil")
+        return
+    end
+    CONCURRENCY_DELAY = delay
 end
 --end Editable Settings
 
@@ -463,14 +473,13 @@ local function generateAll(templateName)
 end
 
 -- For concurrency with the job system
-local function generateAllJob(job)
+local function generateAllJob(job, templateName)
     log('D', 'generateAll', "running generateAll() for template: " .. templateName)
     for _,veh in pairs(getAllVehicles()) do
         generate(veh, templateName)
         job.yield()
     end
-    log('D', 'generateAll', "done")
-    onFinishGen()
+    log('D', 'generateAllJob', templateName .. " done")
 end
 local function generateAllSpecific(templateName, outputPath)
     log('D', 'generateAllSpecific', "running generateAllSpecific()")
@@ -482,14 +491,22 @@ local function generateAllSpecific(templateName, outputPath)
 end
 
 local function generateSeparateJob(job)
+    local timer = nil
+    if TIMER_GENERATION then 
+        log('D', 'generateSeparateJob', "Generating separate mods with timer: " .. os.time())
+        timer = hptimer()
+    end
     GMSGMessage("Generating separate mods", "Info", "info", 2000)
 	getTemplateNames()
     for _,name in pairs(templateNames) do
         loadTemplate(name)
         if template ~= nil then
-            generateAll(name)
+            core_jobsystem.create(function(j) generateAllJob(j, name) end, CONCURRENCY_DELAY)
             job.yield()
         end
+    end
+    if TIMER_GENERATION then 
+        log('D', 'generateSeparateJob', "Done generating separate mods with timer: " .. timer:stop())
     end
 	GMSGMessage("Done generating separate mods", "Info", "info", 2000)
     onFinishGen()
@@ -509,6 +526,11 @@ local function generateSeparateMods()
 end
 
 local function generateMultiSlotJob(job)
+    local timer = nil
+    if TIMER_GENERATION then 
+        log('D', 'generateSeparateJob', "Generating MultiSlot mods with timer: " .. os.time())
+        timer = hptimer()
+    end
     GMSGMessage("Generating multi mods", "Info", "info", 2000)
     getTemplateNames()
     for _,name in pairs(templateNames) do
@@ -521,6 +543,9 @@ local function generateMultiSlotJob(job)
     for _,veh in pairs(getAllVehicles()) do
         generateMulti(veh)
         job.yield()
+    end
+    if TIMER_GENERATION then 
+        log('D', 'generateSeparateJob', "Done generating MultiSlot mods with timer: " .. timer:stop())
     end
     GMSGMessage("Done generating all mods", "Info", "info", 2000)
     onFinishGen()
@@ -681,10 +706,10 @@ local function onExtensionLoaded() -- TODO: needs check if the Extension's alrea
     GMSGMessage("MultiSlot Generator Loaded, starting to generate.", "Info", "info", 3000)
     if getTemplateNames() then
         if SEPARATE_MODS then
-            if USE_COROUTINES then core_jobsystem.create(generateSeparateJob, 1/100) else generateSeparateMods() end
+            if USE_COROUTINES then core_jobsystem.create(generateSeparateJob, CONCURRENCY_DELAY) else generateSeparateMods() end
         end
         if MULTISLOT_MODS then
-            if USE_COROUTINES then core_jobsystem.create(generateMultiSlotJob, 1/100) else generateMultiSlotMod() end
+            if USE_COROUTINES then core_jobsystem.create(generateMultiSlotJob, CONCURRENCY_DELAY) else generateMultiSlotMod() end
         end
         if ADDITIONAL_TO_MULTISLOT then
             extensions.load("tommot_additionalToMultiSlot")
@@ -800,6 +825,7 @@ M.loadSettings = loadSettings
 M.saveSettings = saveSettings
 M.setModSettings = setModSettings
 M.sendSettingsToUI = sendSettingsToUI
+M.setConcurrencyDelay = setConcurrencyDelay
 
 -- Exported utility functions
 M.deleteTempFiles = deleteTempFiles

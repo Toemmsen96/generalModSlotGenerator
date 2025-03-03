@@ -23,6 +23,7 @@ local useCoroutinesCheckboxValue = ffi.new("bool[1]", true)
 local includeMStemplate = ffi.new("bool[1]", true)
 local addDependencyDownloader = ffi.new("bool[1]", true)
 local advancedModeCheckbox = ffi.new("bool[1]", false)
+local concurrencyDelay = ffi.new("float[1]", 1/100)
 -- End Settings
 
 local function loadSettings()
@@ -185,7 +186,7 @@ local function render()
             
             
             if imgui.Button("Generate MuliSlot-Mods concurrently") then
-                core_jobsystem.create(gmsg.generateMultiSlotJob, 1/100)
+                core_jobsystem.create(gmsg.generateMultiSlotJob, concurrencyDelay[0])
             end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("Generates all Templates as MultiSlot-Mods and the MultiSlot-Base-Mod, less lag")
@@ -200,7 +201,7 @@ local function render()
             end
 
             if imgui.Button("Generate SingleSlot-Mods concurrently") then
-                core_jobsystem.create(gmsg.generateSeparateJob, 1/100)
+                core_jobsystem.create(gmsg.generateSeparateJob, concurrencyDelay[0])
             end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("Generates all Templates as normal \"Additional Modification\"-Mods, less lag")
@@ -336,6 +337,14 @@ local function render()
                     imgui.SetTooltip("Loads the Dependency Installer UI extension (gmsgDownloader needs to be installed)")
                 end
 
+                if imgui.SliderFloat("##concurrencyDelay", concurrencyDelay, 1/1000, 1/1) then
+                    gmsg.setConcurrencyDelay(concurrencyDelay)
+                end
+                imgui.SameLine()
+                imgui.Text("Concurrency Delay")
+                if imgui.IsItemHovered() then
+                    imgui.SetTooltip("sets the delay for concurrent generation (default: 1/100)")
+                end
             end
             imgui.EndTabItem()
         end
