@@ -4,7 +4,7 @@
 -- Don't inlcude this mod in your mod, add it as a requirement in you Modpage, as it prevents duplicate code.
 
 local M = {}
-
+local DET_DEBUG = true
 local gmsg = tommot_modslotGenerator
 local templateNames = {}
 local additionalMods = {}
@@ -121,48 +121,87 @@ local function getModSlot(vehicleDir)
     return nil
 end
 
+
 local function getAdditionalMods(vehicleDir)
-    --[[ TODO: 
-    find additional mods
-    for each of them:
-        load and deepcopy jbeam
-        find _mod slot
-        generate new Templatename
-        change _mod slot to new Templatename_mod
-        return list of additional mods to
-        add to templateList
-    ]] 
+    local additionalMods = {}
+    local vehicleModSlot = getModSlot(vehicleDir)
+    
+    if not vehicleModSlot then
+        return additionalMods
+    end
+    
+    -- Search for any jbeam files that have a matching mod slot type
+    local modPattern = vehicleModSlot
+    local files = FS:findFiles("/vehicles/" .. vehicleDir, "*.jbeam", -1, true, false)
+    
+    for _, file in ipairs(files) do
+        local jbeamData = readJsonFile(file)
+        if jbeamData then
+            -- Look through each part in the jbeam file
+            for partKey, part in pairs(jbeamData) do
+                -- Check if this part uses the vehicle's mod slot and isn't a multiMod
+                if part.slotType == vehicleModSlot and 
+                   not ends_with(partKey, "_multiMod") then
+                    local content = readFile(file)
+                    local modifiedContent = content:gsub(vehicleModSlot, partKey .. "_additional")
+                    writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. partKey .. "_MultiSlot.jbeam", modifiedContent)
+                    -- Add to our additional mods list
+                    table.insert(additionalMods, {
+                        partKey = partKey,
+                        file = file,
+                        name = part.information and part.information.name or partKey
+                    })
+                    if DET_DEBUG then log('D', 'getAdditionalMods', "Found additional mod: " .. partKey) end
+                    break
+                end
+            end
+        end
+    end
+    
+    return additionalMods
 end
 
 local function generateMultiWithAdditional(vehicleDir, additionalMods)
+    -- Generate the multi-mod template as before
     local multiModTemplate = readJsonFile("/lua/ge/extensions/tommot/mSGTemplate.json")
     if multiModTemplate == nil then
-        logToConsole('E', 'generateMultiWAdditional', "Failed to load multiModTemplate")
+        log('E', 'generateMultiWAdditional', "Failed to load multiModTemplate")
         return
     end
     local vehicleModSlot = getModSlot(vehicleDir)
     if vehicleModSlot == nil then
-        if DET_DEBUG then logToConsole('D', 'generateMulti', vehicleDir .. " has no mod slot") end
+        if DET_DEBUG then log('D', 'generateMulti', vehicleDir .. " has no mod slot") end
         return
     end
     multiModTemplate.slotType = vehicleModSlot
+    
+    -- Keep track of added entries to prevent duplicates
+    local addedEntries = {}
+    
     for _,templateName in pairs(templateNames) do
         if multiModTemplate ~= nil and multiModTemplate.slots ~= nil and type(multiModTemplate.slots) == 'table' then
             for _,slotType in pairs(getSlotTypes(multiModTemplate.slots)) do
-                table.insert(multiModTemplate.slots, {templateName .. "_mod", "", templateName})
+                local entryKey = templateName .. "_mod"
+                if not addedEntries[entryKey] then
+                    table.insert(multiModTemplate.slots, {entryKey, "", templateName})
+                    addedEntries[entryKey] = true
+                end
             end
         end
     end
 
     -- add additional mods
     for _, additionalMod in pairs(additionalMods) do
-        if additionalMod ~= nil and additionalMod.slots ~= nil and type(additionalMod.slots) == 'table' then
-            for _,slotType in pairs(getSlotTypes(additionalMod.slots)) do
-                table.insert(multiModTemplate.slots, {additionalMod .. "_mod", "", additionalMod})
+        if additionalMod ~= nil then
+            local entryKey = additionalMod.partKey.."_additional"
+            if not addedEntries[entryKey] then
+                table.insert(multiModTemplate.slots, {entryKey, "", additionalMod.name})
+                addedEntries[entryKey] = true
             end
         end
     end
 
+    -- Save the multi-mod template
     local savePath = gmsg.GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_multiMod.jbeam"
     gmsg.makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multiMod")
 end
@@ -171,8 +210,8 @@ end
 
 local function additionalToMultiSlot()
     gmsg.GMSGMessage("Generating MultiSlot Mods from Additional Mods")
-    local vehicles = gmsg.getVehicles()
-    templateNames = gmsg.getTemplateNames()
+    local vehicles = gmsg.getAllVehicles()
+    templateNames = gmsg.loadTemplateNames()
     for _,vehicle in pairs(vehicles) do
         additionalMods = getAdditionalMods(vehicle)
         generateMultiWithAdditional(vehicle, additionalMods)
@@ -185,3 +224,4 @@ end
 
 
 M.additionalToMultiSlot = additionalToMultiSlot
+return M
