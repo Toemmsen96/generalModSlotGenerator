@@ -18,12 +18,16 @@ local autopackCheckboxValue = ffi.new("bool[1]", false)
 local autopackAllCheckboxValue = ffi.new("bool[1]", false)
 local generateSeparateCheckboxValue = ffi.new("bool[1]", false)
 local generateMultiSlotCheckboxValue = ffi.new("bool[1]", true)
+local generateAdditionalCheckboxValue = ffi.new("bool[1]", true)
 local detailedDebugCheckboxValue = ffi.new("bool[1]", true)
 local useCoroutinesCheckboxValue = ffi.new("bool[1]", true)
 local includeMStemplate = ffi.new("bool[1]", true)
 local addDependencyDownloader = ffi.new("bool[1]", true)
 local advancedModeCheckbox = ffi.new("bool[1]", false)
 local concurrencyDelay = ffi.new("float[1]", 1/100)
+local logLevelOptions = {"No Logs", "Info & Warnings", "All Logs"}
+local logLevelSelected = ffi.new("int[1]", 2) -- Default to Debug level
+local LOGLEVEL = 2 -- Global log level: 0 = only errors, 1 = info/warnings, 2 = debug
 -- End Settings
 
 local function loadSettings()
@@ -201,7 +205,7 @@ local function render()
             end
 
             if imgui.Button("Generate SingleSlot-Mods concurrently") then
-                core_jobsystem.create(gmsg.generateSeparateJob, concurrencyDelay[0])
+                core_jobsystem.create(gmsg.generateSeparateJob, tonumber(concurrencyDelay[0]))
             end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("Generates all Templates as normal \"Additional Modification\"-Mods, less lag")
@@ -239,6 +243,15 @@ local function render()
                 imgui.SetTooltip("If enabled, makes the Mod generate all Templates as MultiSlot-Mods, which use the MultiSlot-Base-\"Additional Modification\"-Mod")
             end
 
+            imgui.Checkbox("##generateAdditionalCheckbox", generateAdditionalCheckboxValue)
+            imgui.SameLine()
+            if imgui.Selectable1("Generate Additional as MultiSlot-Mods", generateAdditionalCheckboxValue[0]) then
+                generateAdditionalCheckboxValue[0] = not generateAdditionalCheckboxValue[0]
+            end
+            if imgui.IsItemHovered() then
+                imgui.SetTooltip("If enabled, combines both the Template-Mods and the normal Additional-Mods into MultiSlot-Mods, which use the MultiSlot-Base-\"Additional Modification\"-Mod")
+            end
+
             imgui.Checkbox("##detailedDebugCheckbox", detailedDebugCheckboxValue)
             imgui.SameLine()
             if imgui.Selectable1("Detailed Debug", detailedDebugCheckboxValue[0]) then
@@ -265,6 +278,22 @@ local function render()
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("(WIP, buggy!) If enabled, all generated Mods will be automatically packed into a .zip file, which will then be in the mods-Folder, instead of the unpacked folder. \nThis can improve performance and reduce clutter & file size, but may make GMSG / MultiSlot-Generation slower and more complex")
             end
+
+            imgui.Text("Log Level:")
+            if imgui.BeginCombo("##logLevelCombo", logLevelOptions[logLevelSelected[0]+1]) then
+                for i, level in ipairs(logLevelOptions) do
+                    if imgui.Selectable1(level, (i-1) == logLevelSelected[0]) then
+                        logLevelSelected[0] = i-1
+                        LOGLEVEL = i-1
+                        --gmsg.setLogLevel(i-1)
+                    end
+                end
+                imgui.EndCombo()
+            end
+            if imgui.IsItemHovered() then
+                imgui.SetTooltip("Sets the log level for the Mod (0 = no logs, 1 = info/warnings, 2 = all logs)")
+            end
+            
         
             if imgui.Button("Save Settings") then
                 local settings = {
@@ -273,7 +302,9 @@ local function render()
                     DetailedDebug = detailedDebugCheckboxValue[0],
                     UseCoroutines = useCoroutinesCheckboxValue[0],
                     AutoApplySettings = false,
-                    Autopack = autopackAllCheckboxValue[0]
+                    Autopack = autopackAllCheckboxValue[0],
+                    AdditionalToMultiSlot = generateAdditionalCheckboxValue[0],
+                    LogLevel = logLevelSelected[0]
                 }
                 dump(settings)
                 gmsg.setModSettings(jsonEncode(settings))
@@ -291,7 +322,7 @@ local function render()
             end
 
             if imgui.Button("Reload ModDB") then
-                core_modmanager.initDB()
+                core_modmanager.initDB()  
             end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip("Reloads the ModDB by running the vanilla initDB, which will update the list of Mods in the Mod-Manager")
@@ -299,7 +330,7 @@ local function render()
             imgui.Checkbox("##advancedMode", advancedModeCheckbox)
             imgui.SameLine()
             imgui.Text("Advanced Mode")
-            if imgui.IsItemHovered() then
+           if imgui.IsItemHovered() then
                 imgui.SetTooltip("Enable advanced features (use with caution)")
             end
 
@@ -346,7 +377,7 @@ local function render()
                 end
 
                 if imgui.SliderFloat("##concurrencyDelay", concurrencyDelay, 1/1000, 1/1) then
-                    gmsg.setConcurrencyDelay(concurrencyDelay)
+                    gmsg.setConcurrencyDelay(concurrencyDelay[0])
                 end
                 imgui.SameLine()
                 imgui.Text("Concurrency Delay")

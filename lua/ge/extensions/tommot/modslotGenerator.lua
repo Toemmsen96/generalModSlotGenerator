@@ -36,28 +36,31 @@ elseif be then
   queueHookJS = function(...) be:queueHookJS(...) end
 end
 
-local function logToConsole(level, func, message)
-    if LOGLEVEL == 0 then
-        return
+local function checkLogLevel(level)
+    if (level == 'D' or level == 'debug') and LOGLEVEL < 2 then
+        return false
     end
-    if level == 'D' and LOGLEVEL < 2 then
-        return
+    if (level == 'I' or level == 'info') and LOGLEVEL < 1 then
+        return false
     end
-    if level == 'I' and LOGLEVEL < 1 then
-        return
-    end
-    if level == 'W' and LOGLEVEL < 1 then
-        return
+    if (level == 'W' or level == 'warning') and LOGLEVEL < 1 then
+        return false
     end
     if level == 'E' then
-        log('E', func, message)
-        return
+        return true
     end
-    log(level, func, message)
+end
+
+local function logToConsole(level, func, message)
+
+    if checkLogLevel(level) then
+        log(level, func, message)
+    end
 end
 
 local function GMSGMessage(msg, title, type, timeOut)
     if not queueHookJS then return end
+    if not checkLogLevel(type) then return end
     local onTap = "function() { window.open('https://www.beamng.com/resources/general-modslot-generator-multislot.31265/') }"
     local config = jsonEncode({
       type = type or "warning",
@@ -115,7 +118,7 @@ end
 -- end helpers
 
 -- Editable settings
-local function sendSettingsToUI()
+local function sendSettingsToUI() -- Only for UI - App, not the imgui-UI
     local data = {
         SeparateMods = SEPARATE_MODS,
         DetailedDebug = DET_DEBUG,
@@ -126,7 +129,7 @@ local function sendSettingsToUI()
     guihooks.trigger('setModSettings', data)
 end
 
-local function loadSettings()
+local function loadSettings() -- Loads Settings from the file
     local settings = readJsonFile(SETTINGS_PATH)
     if settings == nil then
         log('W', 'loadSettings', "Failed to find any saved settings, using defaults")
@@ -135,6 +138,7 @@ local function loadSettings()
     if settings ~= nil then
         SEPARATE_MODS = settings.SeparateMods
         MULTISLOT_MODS = settings.MultiSlotMods
+        ADDITIONAL_TO_MULTISLOT = settings.AdditionalToMultiSlot
         DET_DEBUG = settings.DetailedDebug
         USE_COROUTINES = settings.UseCoroutines
         AUTO_APPLY_SETTINGS = settings.AutoApplySettings
@@ -151,10 +155,12 @@ local function saveSettings()
     local settings = {
         SeparateMods = SEPARATE_MODS,
         MultiSlotMods = MULTISLOT_MODS,
+        AdditionalToMultiSlot = ADDITIONAL_TO_MULTISLOT,
         DetailedDebug = DET_DEBUG,
         UseCoroutines = USE_COROUTINES,
         AutoApplySettings = AUTO_APPLY_SETTINGS,
-        Autopack = AUTOPACK
+        Autopack = AUTOPACK,
+        LogLevel = LOGLEVEL
     }
     writeJsonFile(SETTINGS_PATH, settings, true)
     GMSGMessage("Settings saved: SeparateMods: " .. tostring(SEPARATE_MODS) .." MultiSlot: "..tostring(MULTISLOT_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES).." Autopack all: ".. tostring(AUTOPACK), "Info", "info", 2000)
@@ -187,6 +193,16 @@ local function setModSettings(jsonData)
     if data.MultiSlotMods ~= nil then
         MULTISLOT_MODS = data.MultiSlotMods
         logToConsole('D', 'setModSettings', "MultiSlotMods: " .. tostring(MULTISLOT_MODS))
+    end
+
+    if data.AdditionalToMultiSlot ~= nil then
+        ADDITIONAL_TO_MULTISLOT = data.AdditionalToMultiSlot
+        logToConsole('D', 'setModSettings', "AdditionalToMultiSlot: " .. tostring(ADDITIONAL_TO_MULTISLOT))
+    end
+
+    if data.LogLevel ~= nil then
+        LOGLEVEL = data.LogLevel
+        logToConsole('D', 'setModSettings', "LogLevel: " .. tostring(LOGLEVEL))
     end
     
     saveSettings()
@@ -474,7 +490,7 @@ end
 
 -- For concurrency with the job system
 local function generateAllJob(job, templateName)
-    log('D', 'generateAll', "running generateAll() for template: " .. templateName)
+    log('D', 'generateAllJob', "running generateAll() for template: " .. templateName)
     for _,veh in pairs(getAllVehicles()) do
         generate(veh, templateName)
         job.yield()
