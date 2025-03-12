@@ -151,6 +151,7 @@ local function getLicensePlateAdditionalMods()
                     if DET_DEBUG then log('D', 'getLicensePlateAdditionalMods', "Found additional mod: " .. partKey) end
                     break
                 end
+                ::continue::
             end
         end
     end
@@ -197,7 +198,7 @@ local function getAdditionalMods(vehicleDir)
     return additionalMods
 end
 
-local function generateMultiWithAdditional(vehicleDir, additionalMods)
+local function generateMultiWithAdditional(vehicleDir, additionalMods, licensePlateAdditionalMods)
     -- Generate the multi-mod template as before
     local multiModTemplate = readJsonFile("/lua/ge/extensions/tommot/mSGTemplate.json")
     if multiModTemplate == nil then
@@ -238,7 +239,6 @@ local function generateMultiWithAdditional(vehicleDir, additionalMods)
     end
 
     -- add license plate additional mods
-    local licensePlateAdditionalMods = getLicensePlateAdditionalMods()
     for _, additionalMod in pairs(licensePlateAdditionalMods) do
         if additionalMod ~= nil then
             local entryKey = additionalMod.partKey.."_additional"
@@ -260,9 +260,10 @@ local function additionalToMultiSlot()
     gmsg.GMSGMessage("Generating MultiSlot Mods from Additional Mods")
     local vehicles = gmsg.getAllVehicles()
     templateNames = gmsg.loadTemplateNames()
+    local licensePlateAdditionalMods = getLicensePlateAdditionalMods()
     for _,vehicle in pairs(vehicles) do
         additionalMods = getAdditionalMods(vehicle)
-        generateMultiWithAdditional(vehicle, additionalMods)
+        generateMultiWithAdditional(vehicle, additionalMods, licensePlateAdditionalMods)
     end
     gmsg.GMSGMessage("Finished generating MultiSlot Mods from Additional Mods")
 

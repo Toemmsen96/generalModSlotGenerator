@@ -49,6 +49,7 @@ local function checkLogLevel(level)
     if level == 'E' then
         return true
     end
+    return true
 end
 
 local function logToConsole(level, func, message)

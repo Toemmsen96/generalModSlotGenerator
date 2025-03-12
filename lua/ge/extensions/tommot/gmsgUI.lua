@@ -28,6 +28,9 @@ local concurrencyDelay = ffi.new("float[1]", 1/100)
 local logLevelOptions = {"No Logs", "Info & Warnings", "All Logs"}
 local logLevelSelected = ffi.new("int[1]", 2) -- Default to Debug level
 local LOGLEVEL = 2 -- Global log level: 0 = only errors, 1 = info/warnings, 2 = debug
+local loadedExtensions = {}
+local selectedExtension = ""
+
 -- End Settings
 
 local function loadSettings()
@@ -361,6 +364,36 @@ local function render()
                         return
                     end
                     core_jobsystem.create(reloadGMSGJob, 1/60)
+                end
+
+                loadedExtensions = extensions.getLoadedExtensionsNames()
+                if loadedExtensions then
+                    if imgui.BeginCombo("##loadedExtensions", selectedExtension == "" and "Select an extension" or selectedExtension) then
+                        for _, extName in ipairs(loadedExtensions) do
+                            if imgui.Selectable1(extName, extName == selectedExtension) then
+                                selectedExtension = extName
+                                gmsg.logToConsole('I', "ExtensionSelected", "Selected extension: " .. extName)
+                            end
+                        end
+                        imgui.EndCombo()
+                    end
+                    if imgui.IsItemHovered() then
+                        imgui.SetTooltip("Select an extension to reload it")
+                    end
+                    
+                    imgui.SameLine()
+                    if imgui.Button("Reload Selected Extension") and selectedExtension ~= "" then
+                        gmsg.logToConsole('I', "ExtensionReload", "Reloading extension: " .. selectedExtension)
+                        local function reloadExtensionJob()
+                            extensions.unload(selectedExtension)
+                            extensions.load(selectedExtension)
+                            return
+                        end
+                        core_jobsystem.create(reloadExtensionJob, 1/60)
+                    end
+                    if imgui.IsItemHovered() then
+                        imgui.SetTooltip("Reloads the selected extension")
+                    end
                 end
 
 
