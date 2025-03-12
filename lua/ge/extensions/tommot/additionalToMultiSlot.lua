@@ -121,6 +121,42 @@ local function getModSlot(vehicleDir)
     return nil
 end
 
+local function getLicensePlateAdditionalMods()
+    local additionalMods = {}
+    local files = FS:findFiles("/vehicles/common", "*.jbeam", -1, true, false)
+
+    -- find slot named "licenseplate_design_2_1" and add it to additional mods
+    for _, file in ipairs(files) do
+        local jbeam
+        jbeam = readJsonFile(file)
+        if jbeam then
+            for partKey, part in pairs(jbeam) do
+                if part.slotType == "licenseplate_design_2_1" then
+                    local content = readFile(file)
+                    -- Skip parts that have "plate" and "design" in their information name
+                    if part.information and part.information.name then
+                        local infoName = part.information.name:lower()
+                        if infoName:find("plate") and infoName:find("design") then
+                            if DET_DEBUG then log('D', 'getLicensePlateAdditionalMods', "Skipping: " .. partKey .. " due to name filter") end
+                            goto continue
+                        end
+                    end
+                    local modifiedContent = content:gsub("licenseplate_design_2_1", "licenseplate_design_2_1_additional")
+                    writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/common/ModSlot/licenseplate_design_2_1_MultiSlot.jbeam", modifiedContent)
+                    table.insert(additionalMods, {
+                        partKey = partKey,
+                        file = file,
+                        name = part.information and part.information.name or partKey
+                    })
+                    if DET_DEBUG then log('D', 'getLicensePlateAdditionalMods', "Found additional mod: " .. partKey) end
+                    break
+                end
+            end
+        end
+    end
+    return additionalMods
+end
+
 
 local function getAdditionalMods(vehicleDir)
     local additionalMods = {}
@@ -192,6 +228,18 @@ local function generateMultiWithAdditional(vehicleDir, additionalMods)
 
     -- add additional mods
     for _, additionalMod in pairs(additionalMods) do
+        if additionalMod ~= nil then
+            local entryKey = additionalMod.partKey.."_additional"
+            if not addedEntries[entryKey] then
+                table.insert(multiModTemplate.slots, {entryKey, "", additionalMod.name})
+                addedEntries[entryKey] = true
+            end
+        end
+    end
+
+    -- add license plate additional mods
+    local licensePlateAdditionalMods = getLicensePlateAdditionalMods()
+    for _, additionalMod in pairs(licensePlateAdditionalMods) do
         if additionalMod ~= nil then
             local entryKey = additionalMod.partKey.."_additional"
             if not addedEntries[entryKey] then

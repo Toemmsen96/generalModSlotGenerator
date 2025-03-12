@@ -291,6 +291,10 @@ local function loadTemplate(templateName)
     template = readJsonFile("/modslotgenerator/" .. templateName .. ".json")
     if template ~= nil then
         templateVersion = template.version
+        if templateVersion == nil then
+            templateVersion = 1.0
+            template.version = templateVersion
+        end
         log('D', 'loadTemplate', "Loaded Template: " ..templateName.. " Version: " .. templateVersion)
         return template
     end
