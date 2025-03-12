@@ -141,8 +141,9 @@ local function getLicensePlateAdditionalMods()
                             goto continue
                         end
                     end
-                    local modifiedContent = content:gsub("licenseplate_design_2_1", "licenseplate_design_2_1_additional")
-                    writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/common/ModSlot/licenseplate_design_2_1_MultiSlot.jbeam", modifiedContent)
+                    local modifiedContent = content:gsub("licenseplate_design_2_1", partKey .. "_additional_lp")
+                    modifiedContent = modifiedContent:gsub(partKey, partKey .. "_additional_lp")
+                    writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/common/ModSlot/"..partKey.."_additional_lp.jbeam", modifiedContent)
                     table.insert(additionalMods, {
                         partKey = partKey,
                         file = file,
@@ -181,6 +182,7 @@ local function getAdditionalMods(vehicleDir)
                    not ends_with(partKey, "_multiMod") then
                     local content = readFile(file)
                     local modifiedContent = content:gsub(vehicleModSlot, partKey .. "_additional")
+                    modifiedContent = modifiedContent:gsub(partKey, partKey .. "_additional")
                     writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. partKey .. "_MultiSlot.jbeam", modifiedContent)
                     -- Add to our additional mods list
                     table.insert(additionalMods, {
@@ -241,7 +243,7 @@ local function generateMultiWithAdditional(vehicleDir, additionalMods, licensePl
     -- add license plate additional mods
     for _, additionalMod in pairs(licensePlateAdditionalMods) do
         if additionalMod ~= nil then
-            local entryKey = additionalMod.partKey.."_additional"
+            local entryKey = additionalMod.partKey.."_additional_lp"
             if not addedEntries[entryKey] then
                 table.insert(multiModTemplate.slots, {entryKey, "", additionalMod.name})
                 addedEntries[entryKey] = true
