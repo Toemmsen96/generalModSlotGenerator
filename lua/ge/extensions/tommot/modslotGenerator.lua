@@ -85,6 +85,10 @@ local function GMSGMessage(msg, title, type, timeOut)
     queueHookJS("toastrMsg", "["..config.."]", 0)
 end
 
+local function convertName(name)
+    return name:lower():gsub(" ", "_")
+end
+
 local function isEmptyOrWhitespace(str)
     return str == nil or str:match("^%s*$") ~= nil
 end
@@ -144,7 +148,8 @@ local function loadSettings() -- Loads Settings from the file
         USE_COROUTINES = settings.UseCoroutines
         AUTO_APPLY_SETTINGS = settings.AutoApplySettings
         AUTOPACK = settings.Autopack
-        GMSGMessage("Settings loaded: SeparateMods: " .. tostring(SEPARATE_MODS) .. " MultiSlot: " .. tostring(MULTISLOT_MODS) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES).." Autopack all: "..tostring(AUTOPACK), "Info", "info", 2000)
+        LOGLEVEL = settings.LogLevel
+        GMSGMessage("Settings loaded: SeparateMods: " .. tostring(SEPARATE_MODS) .. " MultiSlot: " .. tostring(MULTISLOT_MODS) .." AdditionalToMS: " .. tostring(ADDITIONAL_TO_MULTISLOT) .. " DetailedDebug: " .. tostring(DET_DEBUG) .. " UseCoroutines: " .. tostring(USE_COROUTINES).." Autopack all: "..tostring(AUTOPACK), "Info", "info", 2000)
         sendSettingsToUI()
     end 
     if settings == nil then
@@ -244,9 +249,11 @@ local function makeAndSaveNewTemplate(vehicleDir, slotName, helperTemplate, temp
     local mainPart = {}
     templateCopy.slotType = slotName
     mainPart[vehicleDir .. "_" .. templateName] = templateCopy
+
+    local convName = convertName(templateName)
     
     --save it
-    local savePath = getModSlotJbeamPath(vehicleDir, templateName)
+    local savePath = getModSlotJbeamPath(vehicleDir, convName)
     writeJsonFile(savePath, mainPart, true)
 end
 
@@ -255,16 +262,17 @@ local function makeAndSaveCustomTemplate(vehicleDir, slotName, helperTemplate, t
         log('E', 'makeAndSaveCustomTemplate', "outputPath is nil")
         return
     end
-    log('D', 'makeAndSaveCustomTemplate', "Making and saving custom template: " .. vehicleDir .. " " .. slotName .. " " .. templateName .. " " .. outputPath)
+    local convName = convertName(templateName)
+    log('D', 'makeAndSaveCustomTemplate', "Making and saving custom template: " .. vehicleDir .. " " .. slotName .. " " .. convName .. " " .. outputPath)
     local templateCopy = deepcopy(helperTemplate)
     
     --make main part
     local mainPart = {}
     templateCopy.slotType = slotName
-    mainPart[vehicleDir .. "_" .. templateName] = templateCopy
+    mainPart[vehicleDir .. "_" .. convName] = templateCopy
     
     --save it
-    local savePath = "mods/" .. outputPath .. "/vehicles/".. vehicleDir.."/" ..vehicleDir.. "_" .. templateName .. ".jbeam"
+    local savePath = "mods/" .. outputPath .. "/vehicles/".. vehicleDir.."/" ..vehicleDir.. "_" .. convName .. ".jbeam"
     writeJsonFile(savePath, mainPart, true)
 end
 
@@ -424,9 +432,10 @@ local function generateMulti(vehicleDir)
     end
     multiModTemplate.slotType = vehicleModSlot
     for _,templateName in pairs(templateNames) do
+        local convName = convertName(templateName)
         if multiModTemplate ~= nil and multiModTemplate.slots ~= nil and type(multiModTemplate.slots) == 'table' then
             for _,slotType in pairs(getSlotTypes(multiModTemplate.slots)) do
-                table.insert(multiModTemplate.slots, {templateName .. "_mod", "", templateName})
+                table.insert(multiModTemplate.slots, {convName .. "_mod", "", templateName})
             end
         end
     end
@@ -435,8 +444,10 @@ local function generateMulti(vehicleDir)
 end
 
 local function saveMultiTemplate(template, templateName)
+    local convName = convertName(templateName)
     local newTemplate = deepcopy(template)
-    makeAndSaveNewTemplate("common", templateName .. "_mod", newTemplate, templateName)
+    dump(convName)
+    makeAndSaveNewTemplate("common", convName .. "_mod", newTemplate, templateName)
 end
 
 --generation stuff
@@ -449,7 +460,8 @@ local function onFinishGen()
 end
 
 local function generate(vehicleDir, templateName)
-    local existingData = loadExistingModSlotData(vehicleDir,templateName)
+    local convName = convertName(templateName)
+    local existingData = loadExistingModSlotData(vehicleDir,convName)
     local existingVersion = findTemplateVersion(existingData)
     local vehicleModSlot = getModSlot(vehicleDir)
     if vehicleModSlot == nil then
@@ -470,17 +482,18 @@ local function generate(vehicleDir, templateName)
 			log('D', 'generate', vehicleDir .. " NOT up to date, updating")
 		end
 	end
-    makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, template, templateName)
+    makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, template, convName)
 end
 
 local function generateSpecific(vehicleDir, templateName, outputPath)
+    local convName = convertName(templateName)
     local vehicleModSlot = getModSlot(vehicleDir)
     if vehicleModSlot == nil then
         log('D', 'generateSpecific', vehicleDir .. " has no mod slot")
         return
     end
-    log('D', 'generateSpecific', "Generating specific mod: " .. vehicleDir .. " " .. templateName .. " " .. outputPath)
-    makeAndSaveCustomTemplate(vehicleDir, vehicleModSlot, template, templateName, outputPath)
+    log('D', 'generateSpecific', "Generating specific mod: " .. vehicleDir .. " " .. convName .. " " .. outputPath)
+    makeAndSaveCustomTemplate(vehicleDir, vehicleModSlot, template, convName, outputPath)
 end
 
 local function generateAll(templateName)
@@ -495,17 +508,19 @@ end
 
 -- For concurrency with the job system
 local function generateAllJob(job, templateName)
+    local convName = convertName(templateName)
     log('D', 'generateAllJob', "running generateAll() for template: " .. templateName)
     for _,veh in pairs(getAllVehicles()) do
-        generate(veh, templateName)
+        generate(veh, convName)
         job.yield()
     end
     log('D', 'generateAllJob', templateName .. " done")
 end
 local function generateAllSpecific(templateName, outputPath)
     log('D', 'generateAllSpecific', "running generateAllSpecific()")
+    local convName = convertName(templateName)
     for _,veh in pairs(getAllVehicles()) do
-        generateSpecific(veh, templateName, outputPath)
+        generateSpecific(veh, convName, outputPath)
     end
 	GMSGMessage("Done generating all mods for template: " .. templateName.."\n and path: " .. outputPath, "Info", "info", 2000)
     log('D', 'generateAllSpecific', "done")
@@ -734,7 +749,7 @@ local function onExtensionLoaded() -- TODO: needs check if the Extension's alrea
         end
         if ADDITIONAL_TO_MULTISLOT then
             extensions.load("tommot_additionalToMultiSlot")
-            tommot_additionalToMultiSlot.additionalToMultiSlot()
+            if USE_COROUTINES then core_jobsystem.create(tommot_additionalToMultiSlot.additionalToMultiSlotJob, CONCURRENCY_DELAY) else tommot_additionalToMultiSlot.additionalToMultiSlot() end
         end
         if not SEPARATE_MODS and not MULTISLOT_MODS and not ADDITIONAL_TO_MULTISLOT then
             GMSGMessage("No generation method selected", "Warning", "warning", 5000)
@@ -747,9 +762,11 @@ end
 
 local function onExtensionUnloaded()
     log('D', 'onExtensionUnloaded', "Mods/TommoT ModSlot Generator Unloaded")
-    --deleteTempFiles()
-    extensions.unload("tommot_additionalToMultiSlot")
-    extensions.unload("tommot_gmsgUI")
+    -- deleteTempFiles()
+    -- extensions.unload("tommot_additionalToMultiSlot")
+    -- extensions.unload("tommot_gmsgUI")
+
+    -- Needs some sort of check to unload the other modules if they're not needed anymore
 end
 
 
@@ -853,6 +870,7 @@ M.deleteTempFiles = deleteTempFiles
 M.logToConsole = logToConsole
 M.GMSGMessage = GMSGMessage
 M.getAllVehicles = getAllVehicles
+M.onFinishGen = onFinishGen
 
 -- Exported variables
 M.GENERATED_PATH = GENERATED_PATH

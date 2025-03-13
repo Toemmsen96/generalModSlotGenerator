@@ -258,8 +258,22 @@ end
 
 -- END OF ADJUSTMENTS --
 
+local function additionalToMultiSlotJob(job)
+    gmsg.GMSGMessage("Generating combined MultiSlot", "Info", "info", 2000)
+    local vehicles = gmsg.getAllVehicles()
+    templateNames = gmsg.loadTemplateNames()
+    local licensePlateAdditionalMods = getLicensePlateAdditionalMods()
+    for _,vehicle in pairs(vehicles) do
+        additionalMods = getAdditionalMods(vehicle)
+        generateMultiWithAdditional(vehicle, additionalMods, licensePlateAdditionalMods)
+        job.yield()
+    end
+    gmsg.GMSGMessage("Finished generating combined MultiSlot", "Info", "info", 2000)
+    gmsg.onFinishGen()
+end
+
 local function additionalToMultiSlot()
-    gmsg.GMSGMessage("Generating MultiSlot Mods from Additional Mods")
+    gmsg.GMSGMessage("Generating combined MultiSlot", "Info", "info", 2000)
     local vehicles = gmsg.getAllVehicles()
     templateNames = gmsg.loadTemplateNames()
     local licensePlateAdditionalMods = getLicensePlateAdditionalMods()
@@ -267,12 +281,12 @@ local function additionalToMultiSlot()
         additionalMods = getAdditionalMods(vehicle)
         generateMultiWithAdditional(vehicle, additionalMods, licensePlateAdditionalMods)
     end
-    gmsg.GMSGMessage("Finished generating MultiSlot Mods from Additional Mods")
-
+    gmsg.GMSGMessage("Finished generating combined MultiSlot", "Info", "info", 2000)
+    gmsg.onFinishGen()
 end
 
 
 
-
+M.additionalToMultiSlotJob = additionalToMultiSlotJob
 M.additionalToMultiSlot = additionalToMultiSlot
 return M

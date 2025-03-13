@@ -1,7 +1,10 @@
 {
-    "UseCoroutines": true,
-    "DetailedDebug": true,
-    "SeparateMods": false,
-    "MultiSlotMods": true,
-    "Autopack": false
-}
+    "AdditionalToMultiSlot":true,
+    "AutoApplySettings":false,
+    "Autopack":false,
+    "DetailedDebug":false,
+    "LogLevel":0,
+    "MultiSlotMods":false,
+    "SeparateMods":false,
+    "UseCoroutines":true
+  }
