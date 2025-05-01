@@ -733,7 +733,7 @@ local function isModInDB(nameToCheck)
 end
 
 local function onExtensionLoaded() -- TODO: needs check if the Extension's already running. Otherwise modScript reruns this
-    setExtensionUnloadMode(M, "manual")
+    setExtensionUnloadMode(M, "manual") -- ensure manual unloading if not already set
     if extensions.isExtensionLoaded("tommot_gmsgUI") then 
         logToConsole('W', 'onExtensionLoaded', "Already loaded, returning.")
         return

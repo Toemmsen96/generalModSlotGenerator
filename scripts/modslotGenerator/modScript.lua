@@ -1,3 +1,3 @@
 -- Automatically loads the extension into the game engine Lua
-setExtensionUnloadMode("tommot/modslotGenerator","manual")
-setExtensionUnloadMode("tommot/gmsgUI","manual")
+setExtensionUnloadMode("tommot_modslotGenerator","manual")
+setExtensionUnloadMode("tommot_gmsgUI","manual")
