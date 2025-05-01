@@ -169,7 +169,6 @@ local function getAdditionalMods(vehicleDir)
     end
     
     -- Search for any jbeam files that have a matching mod slot type
-    local modPattern = vehicleModSlot
     local files = FS:findFiles("/vehicles/" .. vehicleDir, "*.jbeam", -1, true, false)
     
     for _, file in ipairs(files) do
@@ -178,18 +177,35 @@ local function getAdditionalMods(vehicleDir)
             -- Look through each part in the jbeam file
             for partKey, part in pairs(jbeamData) do
                 -- Check if this part uses the vehicle's mod slot and isn't a multiMod
+                -- Skip if the vehicleModSlot already ends with _additional
                 if part.slotType == vehicleModSlot and 
-                   not ends_with(partKey, "_multiMod") then
+                   not ends_with(partKey, "_multiMod") and
+                   not ends_with(vehicleModSlot, "_additional") then
                     local content = readFile(file)
-                    local modifiedContent = content:gsub(vehicleModSlot, partKey .. "_additional")
-                    modifiedContent = modifiedContent:gsub(partKey, partKey .. "_additional")
+                    
+                    -- First, create a modified part key for our new additional part
+                    local additionalPartKey = partKey .. "_additional"
+                    
+                    -- Only replace the exact matches for partKey, not partKey within other strings
+                    -- Use a pattern with word boundaries to ensure we're replacing the whole word
+                    local modifiedContent = content
+                    
+                    -- Replace the slotType references
+                    modifiedContent = modifiedContent:gsub('"slotType"%s*:%s*"' .. vehicleModSlot .. '"', '"slotType":"' .. additionalPartKey .. '"')
+                    
+                    -- Replace the partKey in the JSON object definition (at the beginning of a line)
+                    modifiedContent = modifiedContent:gsub('"' .. partKey .. '"%s*:', '"' .. additionalPartKey .. '":')
+                    
+                    -- Write the modified content to a new file
                     writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. partKey .. "_MultiSlot.jbeam", modifiedContent)
+                    
                     -- Add to our additional mods list
                     table.insert(additionalMods, {
                         partKey = partKey,
                         file = file,
                         name = part.information and part.information.name or partKey
                     })
+                    
                     if DET_DEBUG then log('D', 'getAdditionalMods', "Found additional mod: " .. partKey) end
                     break
                 end
@@ -218,9 +234,10 @@ local function generateMultiWithAdditional(vehicleDir, additionalMods, licensePl
     local addedEntries = {}
     
     for _,templateName in pairs(templateNames) do
+        convName = templateName:lower():gsub(" ", "_")
         if multiModTemplate ~= nil and multiModTemplate.slots ~= nil and type(multiModTemplate.slots) == 'table' then
             for _,slotType in pairs(getSlotTypes(multiModTemplate.slots)) do
-                local entryKey = templateName .. "_mod"
+                local entryKey = convName .. "_mod"
                 if not addedEntries[entryKey] then
                     table.insert(multiModTemplate.slots, {entryKey, "", templateName})
                     addedEntries[entryKey] = true

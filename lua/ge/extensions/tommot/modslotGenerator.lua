@@ -733,6 +733,7 @@ local function isModInDB(nameToCheck)
 end
 
 local function onExtensionLoaded() -- TODO: needs check if the Extension's already running. Otherwise modScript reruns this
+    setExtensionUnloadMode(M, "manual")
     if extensions.isExtensionLoaded("tommot_gmsgUI") then 
         logToConsole('W', 'onExtensionLoaded', "Already loaded, returning.")
         return
@@ -758,6 +759,7 @@ local function onExtensionLoaded() -- TODO: needs check if the Extension's alrea
     end
 
     extensions.load("tommot_gmsgUI") -- might need a check if it's already loaded
+    setExtensionUnloadMode("tommot_gmsgUI", "manual")
 end
 
 local function onExtensionUnloaded()
@@ -829,6 +831,8 @@ local function onModDeactivated(mod)
         return
     end
     if validMods[mod.modname] then
+        log('D', 'onModDeactivated', "Unloading mod: " .. mod.modname)
+        GMSGMessage("Unloading mod: " .. mod.modname, "Info", "info", 2000)
         deleteTempFiles()
         extensions.unload("tommot_additionalToMultiSlot") -- unloads additionalToMultiSlot
         extensions.unload("tommot_gmsgUI") -- unloads UI
@@ -837,13 +841,22 @@ local function onModDeactivated(mod)
 
 end
 
+local function onExit()
+    log('D', 'onExit', "Exiting")
+    extensions.unload("tommot_additionalToMultiSlot") -- unloads additionalToMultiSlot
+    extensions.unload("tommot_gmsgUI") -- unloads UI
+    extensions.unload("tommot_modslotGenerator") -- unloads this
+    deleteTempFiles()
+end
+
+M.onInit = function() setExtensionUnloadMode(M, "manual") end
 -- Exported functions for mod lifecycle
 M.onExtensionLoaded = onExtensionLoaded
 M.onExtensionUnloaded = onExtensionUnloaded
 -- M.onModManagerReady = onExtensionLoaded
 M.onModDeactivated = onModDeactivated
 M.onModActivated = onExtensionLoaded
-M.onExit = onModDeactivated
+M.onExit = onExit
 M.onGuiUpdate = onGuiUpdate
 
 -- Exported functions for mod generation
