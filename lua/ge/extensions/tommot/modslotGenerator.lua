@@ -5,10 +5,15 @@
 
 local M = {}
 
---template variables
-local template = nil
-local templateVersion = -1
-local templateNames = nil
+
+-- modules
+local template_module
+local multislot_module
+local addtomulti_module
+
+-- end modules
+
+
 -- settings
 local SEPARATE_MODS = false -- defines if templates generate separate mods for each vehicle
 local MULTISLOT_MODS = true -- defines if templates generate multi mods for each vehicle
@@ -242,104 +247,6 @@ local function loadExistingModSlotData(vehicleDir, templateName)
     return readJsonFile(getModSlotJbeamPath(vehicleDir, templateName))
 end
 
-local function makeAndSaveNewTemplate(vehicleDir, slotName, helperTemplate, templateName)
-    local templateCopy = deepcopy(helperTemplate)
-    
-    --make main part
-    local mainPart = {}
-    templateCopy.slotType = slotName
-    mainPart[vehicleDir .. "_" .. templateName] = templateCopy
-
-    local convName = convertName(templateName)
-    
-    --save it
-    local savePath = getModSlotJbeamPath(vehicleDir, convName)
-    writeJsonFile(savePath, mainPart, true)
-end
-
-local function makeAndSaveCustomTemplate(vehicleDir, slotName, helperTemplate, templateName, outputPath)
-    if outputPath == nil then
-        log('E', 'makeAndSaveCustomTemplate', "outputPath is nil")
-        return
-    end
-    local convName = convertName(templateName)
-    log('D', 'makeAndSaveCustomTemplate', "Making and saving custom template: " .. vehicleDir .. " " .. slotName .. " " .. convName .. " " .. outputPath)
-    local templateCopy = deepcopy(helperTemplate)
-    
-    --make main part
-    local mainPart = {}
-    templateCopy.slotType = slotName
-    mainPart[vehicleDir .. "_" .. convName] = templateCopy
-    
-    --save it
-    local savePath = "mods/" .. outputPath .. "/vehicles/".. vehicleDir.."/" ..vehicleDir.. "_" .. convName .. ".jbeam"
-    writeJsonFile(savePath, mainPart, true)
-end
-
---template version finder
-local function findTemplateVersion(modslotJbeam)
-    if type(modslotJbeam) ~= 'table' then return nil end
-    
-    for modKey, mod in pairs(modslotJbeam) do
-        -- log('D', 'GELua.modslotGenerator.onExtensionLoaded', "modKey: " .. modKey)
-        -- is it valid?
-        if mod.version ~= nil then
-            if DET_DEBUG then log('D', 'findTemplateVersion', "mod.version found: " .. mod.version) end
-            return mod.version
-        end
-    end
-    return nil
-end
-
-local function loadTemplate(templateName)
-    if templateName == nil then
-        log('E', 'loadTemplate', "templateName is nil")
-        GMSGMessage("Error: templateName is nil", "Error", "error", 5000)
-        return
-    end
-    template = readJsonFile("/modslotgenerator/" .. templateName .. ".json")
-    if template ~= nil then
-        templateVersion = template.version
-        if templateVersion == nil then
-            templateVersion = 1.0
-            template.version = templateVersion
-        end
-        log('D', 'loadTemplate', "Loaded Template: " ..templateName.. " Version: " .. templateVersion)
-        return template
-    end
-    if template == nil then
-        log('E', 'loadTemplate', "Failed to load template: " .. templateName)
-        GMSGMessage("Failed to load template: " .. templateName, "Error", "error", 5000)
-        return nil
-    end
-end
-
-local function loadTemplateNames()
-    templateNames = {}
-    local files = FS:findFiles("/modslotgenerator", "*.json", -1, true, false)
-    for _, file in ipairs(files) do
-        local name = string.match(file, "/modslotgenerator/(.*)%.json")
-        if DET_DEBUG then log('D', 'loadTemplateNames', "found template: " .. name) end
-        table.insert(templateNames, name)
-    end
-    if #templateNames == 0 then
-        return nil
-    end
-    return templateNames
-end
-
-local function getTemplateNames()
-    templateNames = loadTemplateNames()
-    if templateNames == nil then
-        GMSGMessage("No templates found! \n Please make sure you have downloaded at least one MultiSlot / GMSG Plugin", "Warning", "warning", 5000)
-        log('E', 'getTemplateNames', "No templates found")
-        return false
-    end
-    log('D', 'getTemplateNames', "Templates found: " .. table.concat(templateNames, ", "))
-    GMSGMessage("Templates found: " .. table.concat(templateNames, ", "), "Info", "info", 2000)
-    return true
-end
-
 --part helpers
 local function findMainPart(vehicleJbeam) 
     if type(vehicleJbeam) ~= 'table' then return nil end
@@ -418,38 +325,6 @@ local function getModSlot(vehicleDir)
     return nil
 end
 
---generation stuff for multi templates
-local function generateMulti(vehicleDir)
-    local multiModTemplate = readJsonFile("/lua/ge/extensions/tommot/mSGTemplate.json")
-    if multiModTemplate == nil then
-        logToConsole('E', 'generateMulti', "Failed to load multiModTemplate")
-        return
-    end
-    local vehicleModSlot = getModSlot(vehicleDir)
-    if vehicleModSlot == nil then
-        if DET_DEBUG then logToConsole('D', 'generateMulti', vehicleDir .. " has no mod slot") end
-        return
-    end
-    multiModTemplate.slotType = vehicleModSlot
-    for _,templateName in pairs(templateNames) do
-        local convName = convertName(templateName)
-        if multiModTemplate ~= nil and multiModTemplate.slots ~= nil and type(multiModTemplate.slots) == 'table' then
-            for _,slotType in pairs(getSlotTypes(multiModTemplate.slots)) do
-                table.insert(multiModTemplate.slots, {convName .. "_mod", "", templateName})
-            end
-        end
-    end
-    local savePath = GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_multiMod.jbeam"
-    makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multiMod")
-end
-
-local function saveMultiTemplate(template, templateName)
-    local convName = convertName(templateName)
-    local newTemplate = deepcopy(template)
-    dump(convName)
-    makeAndSaveNewTemplate("common", convName .. "_mod", newTemplate, templateName)
-end
-
 --generation stuff
 local function onFinishGen()
     core_modmanager.initDB()
@@ -462,7 +337,7 @@ end
 local function generate(vehicleDir, templateName)
     local convName = convertName(templateName)
     local existingData = loadExistingModSlotData(vehicleDir,convName)
-    local existingVersion = findTemplateVersion(existingData)
+    local existingVersion = template_module.findTemplateVersion(existingData)
     local vehicleModSlot = getModSlot(vehicleDir)
     if vehicleModSlot == nil then
         if DET_DEBUG then log('D', 'generate', vehicleDir .. " has no mod slot") end
@@ -482,7 +357,7 @@ local function generate(vehicleDir, templateName)
 			log('D', 'generate', vehicleDir .. " NOT up to date, updating")
 		end
 	end
-    makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, template, convName)
+    template_module.makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, template, convName)
 end
 
 local function generateSpecific(vehicleDir, templateName, outputPath)
@@ -493,7 +368,7 @@ local function generateSpecific(vehicleDir, templateName, outputPath)
         return
     end
     log('D', 'generateSpecific', "Generating specific mod: " .. vehicleDir .. " " .. convName .. " " .. outputPath)
-    makeAndSaveCustomTemplate(vehicleDir, vehicleModSlot, template, convName, outputPath)
+    template_module.makeAndSaveCustomTemplate(vehicleDir, vehicleModSlot, template, convName, outputPath)
 end
 
 local function generateAll(templateName)
@@ -528,21 +403,24 @@ end
 
 local function generateSeparateJob(job)
     local timer = nil
+    local time = nil
     if TIMER_GENERATION then 
         log('D', 'generateSeparateJob', "Generating separate mods with timer: " .. os.time())
         timer = hptimer()
     end
     GMSGMessage("Generating separate mods", "Info", "info", 2000)
-	getTemplateNames()
+	local templateNames = template_module.loadTemplateNames()
     for _,name in pairs(templateNames) do
-        loadTemplate(name)
-        if template ~= nil then
+        local loaded_template = template_module.loadTemplate(name)
+        if loaded_template ~= nil then
             core_jobsystem.create(function(j) generateAllJob(j, name) end, CONCURRENCY_DELAY)
             job.yield()
         end
     end
     if TIMER_GENERATION then 
-        log('D', 'generateSeparateJob', "Done generating separate mods with timer: " .. timer:stop())
+        time = timer:stop()
+        log('D', 'generateSeparateJob', "Done generating separate mods with timer: " .. time)
+        GMSGMessage("Done generating separate mods with timer: " .. time, "Info", "info", 2000)
     end
 	GMSGMessage("Done generating separate mods", "Info", "info", 2000)
     onFinishGen()
@@ -550,53 +428,14 @@ end
 
 local function generateSeparateMods()
 	GMSGMessage("Generating separate mods", "Info", "info", 2000)
-	getTemplateNames()
+    local templateNames = template_module.loadTemplateNames()
     for _,name in pairs(templateNames) do
-        loadTemplate(name)
+        template_module.loadTemplate(name)
         if template ~= nil then
             generateAll(name)
         end
     end
 	GMSGMessage("Done generating separate mods", "Info", "info", 2000)
-    onFinishGen()
-end
-
-local function generateMultiSlotJob(job)
-    local timer = nil
-    if TIMER_GENERATION then 
-        log('D', 'generateSeparateJob', "Generating MultiSlot mods with timer: " .. os.time())
-        timer = hptimer()
-    end
-    GMSGMessage("Generating multi mods", "Info", "info", 2000)
-    getTemplateNames()
-    for _,name in pairs(templateNames) do
-        loadTemplate(name)
-        if template ~= nil then
-            saveMultiTemplate(template, name)
-            job.yield()
-        end
-    end
-    for _,veh in pairs(getAllVehicles()) do
-        generateMulti(veh)
-        job.yield()
-    end
-    if TIMER_GENERATION then 
-        log('D', 'generateSeparateJob', "Done generating MultiSlot mods with timer: " .. timer:stop())
-    end
-    GMSGMessage("Done generating all mods", "Info", "info", 2000)
-    onFinishGen()
-end
-
-local function generateMultiSlotMod()
-    for _,name in pairs(templateNames) do
-        loadTemplate(name)
-        if template ~= nil then
-            saveMultiTemplate(template, name)
-        end
-    end
-	for _,veh in pairs(getAllVehicles()) do
-		generateMulti(veh)
-    end
     onFinishGen()
 end
 
@@ -627,14 +466,14 @@ local function generateSpecificMod(templatePath, templateName, outputPath, autoP
         addDependencyDownloader = false
     end
 
-    template = readJsonFile(templatePath)
+    local template = readJsonFile(templatePath)
     if template ~= nil then
         templateVersion = template.version
         log('D', 'generateSpecificMod', "Loaded Template-version: " .. templateVersion)
     end
     if template == nil then
         log('W', 'generateSpecificMod', "Failed to load template from path: " .. templatePath)
-        template = loadTemplate(templateName)
+        template = template_module.loadTemplate(templateName)
         if template == nil then
             log('E', 'generateSpecificMod', "Failed to load template: " .. templateName)
             GMSGMessage("Failed to load template: " .. templateName, "Error", "error", 5000)
@@ -734,6 +573,9 @@ end
 
 local function onExtensionLoaded() -- TODO: needs check if the Extension's already running. Otherwise modScript reruns this
     setExtensionUnloadMode(M, "manual") -- ensure manual unloading if not already set
+    extensions.load("tommot_templates")
+    setExtensionUnloadMode("tommot_templates", "manual")
+    template_module = tommot_templates
     if extensions.isExtensionLoaded("tommot_gmsgUI") then 
         logToConsole('W', 'onExtensionLoaded', "Already loaded, returning.")
         return
@@ -741,16 +583,22 @@ local function onExtensionLoaded() -- TODO: needs check if the Extension's alrea
     log('D', 'onExtensionLoaded', "Mods/TommoT ModSlot Generator Loaded")
     loadSettings()
     GMSGMessage("MultiSlot Generator Loaded, starting to generate.", "Info", "info", 3000)
-    if getTemplateNames() then
+    if tommot_templates.getTemplateNames() then
         if SEPARATE_MODS then
             if USE_COROUTINES then core_jobsystem.create(generateSeparateJob, CONCURRENCY_DELAY) else generateSeparateMods() end
         end
         if MULTISLOT_MODS then
-            if USE_COROUTINES then core_jobsystem.create(generateMultiSlotJob, CONCURRENCY_DELAY) else generateMultiSlotMod() end
+            if not extensions.isExtensionLoaded("tommot_multislot") then
+                extensions.load("tommot_multislot")
+                setExtensionUnloadMode("tommot_multislot", "manual")
+                multislot_module = tommot_multislot
+            end
+            if USE_COROUTINES then core_jobsystem.create(multislot_module.generateMultiSlotJob, CONCURRENCY_DELAY) else multislot_module.generateMultiSlotMod() end
         end
         if ADDITIONAL_TO_MULTISLOT then
             extensions.load("tommot_additionalToMultiSlot")
-            if USE_COROUTINES then core_jobsystem.create(tommot_additionalToMultiSlot.additionalToMultiSlotJob, CONCURRENCY_DELAY) else tommot_additionalToMultiSlot.additionalToMultiSlot() end
+            addtomulti_module = tommot_additionalToMultiSlot
+            if USE_COROUTINES then core_jobsystem.create(addtomulti_module.additionalToMultiSlotJob, CONCURRENCY_DELAY) else addtomulti_module.additionalToMultiSlot() end
         end
         if not SEPARATE_MODS and not MULTISLOT_MODS and not ADDITIONAL_TO_MULTISLOT then
             GMSGMessage("No generation method selected", "Warning", "warning", 5000)
@@ -860,16 +708,16 @@ M.onExit = onExit
 M.onGuiUpdate = onGuiUpdate
 
 -- Exported functions for mod generation
-M.generateMultiSlotMod = generateMultiSlotMod
-M.generateMultiSlotJob = generateMultiSlotJob
+-- M.generateMultiSlotMod = multislot_module.generateMultiSlotMod
+-- M.generateMultiSlotJob = multislot_module.generateMultiSlotJob
 M.generateSeparateMods = generateSeparateMods
 M.generateSeparateJob = generateSeparateJob
 M.generateSpecificMod = generateSpecificMod
 
 -- Exported functions for template management
-M.getTemplateNames = getTemplateNames
-M.loadTemplateNames = loadTemplateNames
-M.makeAndSaveNewTemplate = makeAndSaveNewTemplate
+-- M.getTemplateNames = template_module.getTemplateNames
+-- M.loadTemplateNames = template_module.loadTemplateNames
+-- M.makeAndSaveNewTemplate = template_module.makeAndSaveNewTemplate
 
 -- Exported functions for settings management
 M.loadSettings = loadSettings
@@ -884,6 +732,15 @@ M.logToConsole = logToConsole
 M.GMSGMessage = GMSGMessage
 M.getAllVehicles = getAllVehicles
 M.onFinishGen = onFinishGen
+M.convertName = convertName
+M.readJsonFile = readJsonFile
+M.writeJsonFile = writeJsonFile
+M.getModNameFromPath = getModNameFromPath
+M.isEmptyOrWhitespace = isEmptyOrWhitespace
+M.isModInDB = isModInDB
+M.getModSlotJbeamPath = getModSlotJbeamPath
+M.getModSlot = getModSlot
+M.getSlotTypes = getSlotTypes
 
 -- Exported variables
 M.GENERATED_PATH = GENERATED_PATH

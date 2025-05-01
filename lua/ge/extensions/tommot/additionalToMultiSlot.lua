@@ -234,7 +234,7 @@ local function generateMultiWithAdditional(vehicleDir, additionalMods, licensePl
     local addedEntries = {}
     
     for _,templateName in pairs(templateNames) do
-        convName = templateName:lower():gsub(" ", "_")
+        local convName = templateName:lower():gsub(" ", "_")
         if multiModTemplate ~= nil and multiModTemplate.slots ~= nil and type(multiModTemplate.slots) == 'table' then
             for _,slotType in pairs(getSlotTypes(multiModTemplate.slots)) do
                 local entryKey = convName .. "_mod"
@@ -270,15 +270,13 @@ local function generateMultiWithAdditional(vehicleDir, additionalMods, licensePl
 
     -- Save the multi-mod template
     local savePath = gmsg.GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_multiMod.jbeam"
-    gmsg.makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multiMod")
+    tommot_templates.makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multiMod")
 end
-
--- END OF ADJUSTMENTS --
 
 local function additionalToMultiSlotJob(job)
     gmsg.GMSGMessage("Generating combined MultiSlot", "Info", "info", 2000)
     local vehicles = gmsg.getAllVehicles()
-    templateNames = gmsg.loadTemplateNames()
+    templateNames = tommot_templates.loadTemplateNames()
     local licensePlateAdditionalMods = getLicensePlateAdditionalMods()
     for _,vehicle in pairs(vehicles) do
         additionalMods = getAdditionalMods(vehicle)
@@ -292,7 +290,7 @@ end
 local function additionalToMultiSlot()
     gmsg.GMSGMessage("Generating combined MultiSlot", "Info", "info", 2000)
     local vehicles = gmsg.getAllVehicles()
-    templateNames = gmsg.loadTemplateNames()
+    templateNames = tommot_templates.loadTemplateNames()
     local licensePlateAdditionalMods = getLicensePlateAdditionalMods()
     for _,vehicle in pairs(vehicles) do
         additionalMods = getAdditionalMods(vehicle)
