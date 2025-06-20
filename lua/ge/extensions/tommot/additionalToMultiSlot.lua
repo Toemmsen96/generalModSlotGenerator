@@ -143,7 +143,7 @@ local function getLicensePlateAdditionalMods()
                     end
                     local modifiedContent = content:gsub("licenseplate_design_2_1", partKey .. "_additional_lp")
                     modifiedContent = modifiedContent:gsub(partKey, partKey .. "_additional_lp")
-                    writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/common/ModSlot/"..partKey.."_additional_lp.jbeam", modifiedContent)
+                    writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/common/modslot/"..partKey.."_additional_lp.jbeam", modifiedContent)
                     table.insert(additionalMods, {
                         partKey = partKey,
                         file = file,
@@ -179,7 +179,7 @@ local function getAdditionalMods(vehicleDir)
                 -- Check if this part uses the vehicle's mod slot and isn't a multiMod
                 -- Skip if the vehicleModSlot already ends with _additional
                 if part.slotType == vehicleModSlot and 
-                   not ends_with(partKey, "_multiMod") and
+                   not ends_with(partKey, "_multimod") and
                    not ends_with(vehicleModSlot, "_additional") then
                     local content = readFile(file)
                     
@@ -197,7 +197,7 @@ local function getAdditionalMods(vehicleDir)
                     modifiedContent = modifiedContent:gsub('"' .. partKey .. '"%s*:', '"' .. additionalPartKey .. '":')
                     
                     -- Write the modified content to a new file
-                    writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. partKey .. "_MultiSlot.jbeam", modifiedContent)
+                    writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/modslot/" .. partKey .. "_multislot.jbeam", modifiedContent)
                     
                     -- Add to our additional mods list
                     table.insert(additionalMods, {
@@ -269,8 +269,8 @@ local function generateMultiWithAdditional(vehicleDir, additionalMods, licensePl
     end
 
     -- Save the multi-mod template
-    local savePath = gmsg.GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_multiMod.jbeam"
-    tommot_templates.makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multiMod")
+    local savePath = gmsg.GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/modslot/" .. vehicleDir .. "_multimod.jbeam"
+    tommot_templates.makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multimod")
 end
 
 local function additionalToMultiSlotJob(job)

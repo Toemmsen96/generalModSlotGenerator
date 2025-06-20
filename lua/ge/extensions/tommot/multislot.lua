@@ -53,8 +53,8 @@ local function generateMulti(vehicleDir)
             end
         end
     end
-    local savePath = GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_multiMod.jbeam"
-    makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multiMod")
+    local savePath = GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/modslot/" .. vehicleDir .. "_multimod.jbeam"
+    makeAndSaveNewTemplate(vehicleDir, vehicleModSlot, multiModTemplate, "multimod")
 end
 
 local function generateMultiSlotJob(job)

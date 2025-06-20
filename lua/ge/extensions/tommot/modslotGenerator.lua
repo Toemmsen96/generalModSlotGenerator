@@ -239,7 +239,7 @@ local function getAllVehicles()
 end
 
 local function getModSlotJbeamPath(vehicleDir, templateName)
-    local path = GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/ModSlot/" .. vehicleDir .. "_" .. templateName .. ".jbeam"
+    local path = GENERATED_PATH:lower().."/vehicles/" .. vehicleDir .. "/modslot/" .. vehicleDir .. "_" .. templateName .. ".jbeam"
     return path
 end
 
@@ -361,8 +361,14 @@ local function generate(vehicleDir, templateName)
 end
 
 local function generateSpecific(vehicleDir, templateName, outputPath)
+    local template = template_module.loadTemplate(templateName)
     local convName = convertName(templateName)
     local vehicleModSlot = getModSlot(vehicleDir)
+    if template == nil then
+        log('E', 'generateSpecific', "Failed to load template: " .. templateName)
+        GMSGMessage("Failed to load template: " .. templateName, "Error", "error", 5000)
+        return
+    end
     if vehicleModSlot == nil then
         log('D', 'generateSpecific', vehicleDir .. " has no mod slot")
         return
@@ -395,7 +401,7 @@ local function generateAllSpecific(templateName, outputPath)
     log('D', 'generateAllSpecific', "running generateAllSpecific()")
     local convName = convertName(templateName)
     for _,veh in pairs(getAllVehicles()) do
-        generateSpecific(veh, convName, outputPath)
+        generateSpecific(veh, templateName, outputPath)
     end
 	GMSGMessage("Done generating all mods for template: " .. templateName.."\n and path: " .. outputPath, "Info", "info", 2000)
     log('D', 'generateAllSpecific', "done")
@@ -490,6 +496,7 @@ local function generateSpecificMod(templatePath, templateName, outputPath, autoP
         log('D', 'generateSpecificMod', "Adding dependency downloader files")
         -- Copy files maintaining folder structure
         local depDownloaderPath = "/ModSlotGeneratorExampleTemplates/depDownloader"
+        depDownloaderPath = depDownloaderPath:lower() -- Ensure path is lowercase for consistency
         local depDownloaderFiles = FS:findFiles(depDownloaderPath, "*", -1, true, false)
         for _, file in ipairs(depDownloaderFiles) do
             -- Get relative path by removing the base path

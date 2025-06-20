@@ -22,7 +22,11 @@ end
 
 local function makeAndSaveNewTemplate(vehicleDir, slotName, helperTemplate, templateName)
     local templateCopy = deepcopy(helperTemplate)
-    
+    if templateCopy == nil then
+        log('W', 'makeAndSaveNewTemplate', "templateCopy is nil")
+        --GMSGMessage("Error: templateCopy is nil", "Error", "error", 5000)
+        return
+    end
     --make main part
     local mainPart = {}
     templateCopy.slotType = slotName
@@ -95,6 +99,11 @@ local function makeAndSaveCustomTemplate(vehicleDir, slotName, helperTemplate, t
     local convName = convertName(templateName)
     log('D', 'makeAndSaveCustomTemplate', "Making and saving custom template: " .. vehicleDir .. " " .. slotName .. " " .. convName .. " " .. outputPath)
     local templateCopy = deepcopy(helperTemplate)
+    if templateCopy == nil then
+        log('W', 'makeAndSaveCustomTemplate', "templateCopy is nil")
+        GMSGMessage("Error: templateCopy is nil", "Error", "error", 5000)
+        return
+    end
     
     --make main part
     local mainPart = {}
