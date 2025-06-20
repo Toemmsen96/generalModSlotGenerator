@@ -125,15 +125,29 @@ local function getLicensePlateAdditionalMods()
     local additionalMods = {}
     local files = FS:findFiles("/vehicles/common", "*.jbeam", -1, true, false)
 
-    -- find slot named "licenseplate_design_2_1" and add it to additional mods
     for _, file in ipairs(files) do
-        local jbeam
-        jbeam = readJsonFile(file)
+        local jbeam = readJsonFile(file)
         if jbeam then
             for partKey, part in pairs(jbeam) do
-                if part.slotType == "licenseplate_design_2_1" then
+                local hasLicensePlateSlot = false
+                if DET_DEBUG then log('D', 'getLicensePlateAdditionalMods', "Checking part: " .. partKey) end
+                if part.slotType then
+                    if type(part.slotType) == "string" and part.slotType == "licenseplate_design_2_1" then
+                        if DET_DEBUG then log('D', 'getLicensePlateAdditionalMods', "Found license plate slot in " .. partKey) end
+                        hasLicensePlateSlot = true
+                    elseif type(part.slotType) == "table" then
+                        for _, slotType in ipairs(part.slotType) do
+                            if slotType == "licenseplate_design_2_1" then
+                                if DET_DEBUG then log('D', 'getLicensePlateAdditionalMods', "Found license plate slot in " .. partKey) end
+                                hasLicensePlateSlot = true
+                                break
+                            end
+                        end
+                    end
+                end
+                
+                if hasLicensePlateSlot then
                     local content = readFile(file)
-                    -- Skip parts that have "plate" and "design" in their information name
                     if part.information and part.information.name then
                         local infoName = part.information.name:lower()
                         if infoName:find("plate") and infoName:find("design") then
@@ -141,16 +155,28 @@ local function getLicensePlateAdditionalMods()
                             goto continue
                         end
                     end
-                    local modifiedContent = content:gsub("licenseplate_design_2_1", partKey .. "_additional_lp")
-                    modifiedContent = modifiedContent:gsub(partKey, partKey .. "_additional_lp")
-                    writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/common/modslot/"..partKey.."_additional_lp.jbeam", modifiedContent)
+                    
+                    -- Create additional license plate part
+                    local additionalPartKey = partKey .. "_additional_lp"
+                    local modifiedContent = content
+                    
+                    -- Replace the slotType from licenseplate_design_2_1 to the new additional type
+                    modifiedContent = modifiedContent:gsub("licenseplate_design_2_1", additionalPartKey)
+                    
+                    -- Replace the partKey in the JSON object definition
+                    modifiedContent = modifiedContent:gsub(partKey, additionalPartKey)
+                    additionalPartKey = additionalPartKey:lower()
+                    
+                    -- Ensure the directory exists
+                    writeFile(gmsg.GENERATED_PATH:lower().."/vehicles/common/modslot/" .. additionalPartKey .. ".jbeam", modifiedContent)
+                    
+                    
                     table.insert(additionalMods, {
-                        partKey = partKey,
+                        partKey = additionalPartKey,
                         file = file,
                         name = part.information and part.information.name or partKey
                     })
-                    if DET_DEBUG then log('D', 'getLicensePlateAdditionalMods', "Found additional mod: " .. partKey) end
-                    break
+                    if DET_DEBUG then log('D', 'getLicensePlateAdditionalMods', "Created additional mod: " .. additionalPartKey) end
                 end
                 ::continue::
             end
@@ -260,7 +286,7 @@ local function generateMultiWithAdditional(vehicleDir, additionalMods, licensePl
     -- add license plate additional mods
     for _, additionalMod in pairs(licensePlateAdditionalMods) do
         if additionalMod ~= nil then
-            local entryKey = additionalMod.partKey.."_additional_lp"
+            local entryKey = additionalMod.partKey
             if not addedEntries[entryKey] then
                 table.insert(multiModTemplate.slots, {entryKey, "", additionalMod.name})
                 addedEntries[entryKey] = true
