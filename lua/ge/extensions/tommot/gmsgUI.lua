@@ -427,7 +427,7 @@ local function render()
 
 
                 if imgui.Button("Load Dependency Installer UI") then
-                    extensions.load("tommot_depInstallerUi")
+                    extensions.load("tommot_dependnginstaller")
                 end
                 if imgui.IsItemHovered() then
                     imgui.SetTooltip("Loads the Dependency Installer UI extension (gmsgDownloader needs to be installed)")
